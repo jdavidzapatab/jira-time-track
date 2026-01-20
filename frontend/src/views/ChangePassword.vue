@@ -1,14 +1,32 @@
 <template>
-  <div class="auth-page">
-    <h2>Change Password</h2>
-    <p>Please enter your email to receive a password change link.</p>
-    <form @submit.prevent="handleChangePassword">
+  <div class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 card">
       <div>
-        <label>Email:</label>
-        <input v-model="email" type="email" required />
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Request Password Change</h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+          We'll send a link to your email to reset your password.
+        </p>
       </div>
-      <button type="submit">Send Link</button>
-    </form>
+      <form class="mt-8 space-y-6" @submit.prevent="requestChange">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Email address</label>
+          <input type="email" required v-model="email" class="input mt-1" placeholder="Email address" />
+        </div>
+
+        <div v-if="error" class="text-red-600 text-sm text-center bg-red-50 p-2 rounded">
+          {{ error }}
+        </div>
+        <div v-if="success" class="text-green-600 text-sm text-center bg-green-50 p-2 rounded">
+          {{ success }}
+        </div>
+
+        <div>
+          <button type="submit" :disabled="loading" class="w-full btn btn-primary">
+            {{ loading ? 'Sending...' : 'Send Reset Link' }}
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -17,16 +35,21 @@ import { ref } from 'vue';
 import axios from 'axios';
 
 const email = ref('');
+const error = ref('');
+const success = ref('');
+const loading = ref(false);
 
-const handleChangePassword = async () => {
+const requestChange = async () => {
+  loading.value = true;
+  error.value = '';
+  success.value = '';
   try {
-    // According to the requirements: "sending a link to the registered email to proceed with the password change action. 
-    // The action to be able to see the link in the email inbox is enough to prove ownership for now."
-    // I will mock this for now as per instructions.
     await axios.post('/api/auth/change-password-request', { email: email.value });
-    alert('Password change link sent! (Check server logs for the link)');
-  } catch (e) {
-    alert(e.response?.data || 'Request failed');
+    success.value = 'If an account exists for this email, a reset link has been sent to your console.';
+  } catch (err) {
+    error.value = err.response?.data || 'Failed to request password change';
+  } finally {
+    loading.value = false;
   }
 };
 </script>

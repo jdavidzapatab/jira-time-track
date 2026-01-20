@@ -43,3 +43,23 @@ pub fn decrypt(encrypted_data: &str) -> String {
 
     String::from_utf8(plaintext).expect("Invalid UTF-8")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_encrypt_decrypt() {
+        // Set a dummy key for testing
+        let test_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        unsafe { env::set_var("ENCRYPTION_KEY", test_key); }
+
+        let original_text = "secret password 123";
+        let encrypted = encrypt(original_text);
+        assert_ne!(original_text, encrypted);
+        
+        let decrypted = decrypt(&encrypted);
+        assert_eq!(original_text, decrypted);
+    }
+}

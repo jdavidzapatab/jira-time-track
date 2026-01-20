@@ -1,41 +1,96 @@
 <template>
-  <div>
-    <h2>Jira Tickets</h2>
-    <button @click="addTicket" title="Add a new ticket line item">Add Ticket</button>
-
-    <div v-for="ticket in tickets" :key="ticket.id" class="ticket-row">
-      <select v-model="ticket.server_id" @change="updateTicket(ticket)" title="Select Jira Server">
-        <option :value="null">Select Server</option>
-        <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
-      </select>
-
-      <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" placeholder="Ticket #" title="Enter Jira Ticket Number (e.g. PROJ-123)" />
-
-      <span class="ticket-summary">{{ ticket.ticket_summary || '...' }}</span>
-
-      <input :value="formatTime(ticket.time_spent_seconds)" @input="e => onTimeInput(ticket, e.target.value)" placeholder="0m" title="Enter time (e.g. 1h 30m, 2d 6h)" />
-
-      <button @click="toggleStopwatch(ticket)" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
-        <Pause v-if="ticket.last_stopwatch_start" :size="16" />
-        <Play v-else :size="16" />
+  <div class="space-y-6">
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-900">Jira Tickets</h1>
+      <button @click="addTicket" class="btn btn-primary" title="Add a new ticket line item">
+        Add Ticket
       </button>
-
-      <button @click="openSaveDialog(ticket)" title="Save worklog to Jira"><Save :size="16" /></button>
-      <button @click="confirmClear(ticket)" title="Clear ticket data"><Eraser :size="16" /></button>
-      <button @click="confirmDelete(ticket)" title="Delete ticket line"><Trash2 :size="16" /></button>
     </div>
 
-    <!-- Save Dialog -->
-    <div v-if="showSaveDialog" class="modal">
-      <div class="modal-content">
-        <h3>Save Worklog</h3>
-        <p><strong>Ticket:</strong> {{ currentTicket.ticket_number }} - {{ currentTicket.ticket_summary }}</p>
-        <p><strong>Time:</strong> {{ formatTime(currentTicket.time_spent_seconds) }}</p>
-        <textarea v-model="worklogDescription" placeholder="Enter description of time spent" title="Describe what you did"></textarea>
-        <div class="modal-actions">
-          <button @click="showSaveDialog = false">Cancel</button>
-          <button @click="saveForLater">Save for Later</button>
-          <button @click="submitWorklog">Submit</button>
+    <div class="space-y-4">
+      <div v-for="ticket in tickets" :key="ticket.id" class="card flex flex-wrap items-center gap-4 py-4 px-6">
+        <div class="w-full md:w-48">
+          <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="input py-1.5" title="Select Jira Server">
+            <option :value="null">Select Server</option>
+            <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+
+        <div class="w-full md:w-32">
+          <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" class="input py-1.5" placeholder="Ticket #" title="Enter Jira Ticket Number (e.g. PROJ-123)" />
+        </div>
+
+        <div class="flex-1 min-w-[200px] text-sm text-gray-600 truncate italic">
+          {{ ticket.ticket_summary || 'No summary fetched' }}
+        </div>
+
+        <div class="w-28">
+          <input :value="formatTime(ticket.time_spent_seconds)" @input="e => onTimeInput(ticket, e.target.value)" class="input py-1.5 text-center font-mono" placeholder="0m" title="Enter time (e.g. 1h 30m, 2d 6h)" />
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button @click="toggleStopwatch(ticket)" class="p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-green-600 bg-green-50 hover:bg-green-100'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
+            <Pause v-if="ticket.last_stopwatch_start" :size="20" />
+            <Play v-else :size="20" />
+          </button>
+
+          <button @click="openSaveDialog(ticket)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Save worklog to Jira">
+            <Save :size="20" />
+          </button>
+          
+          <button @click="confirmClear(ticket)" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Clear ticket data">
+            <Eraser :size="20" />
+          </button>
+          
+          <button @click="confirmDelete(ticket)" class="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Delete ticket line">
+            <Trash2 :size="20" />
+          </button>
+        </div>
+      </div>
+
+      <div v-if="tickets.length === 0" class="card py-12 text-center text-gray-500 italic">
+        No tickets added. Click "Add Ticket" to start tracking time.
+      </div>
+    </div>
+
+    <!-- Save Dialog Modal -->
+    <div v-if="showSaveDialog" class="fixed inset-0 z-10 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showSaveDialog = false"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div class="inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                  Save Worklog to Jira
+                </h3>
+                <div class="mt-4 space-y-3">
+                  <div class="bg-gray-50 p-3 rounded text-sm space-y-1">
+                    <p><span class="font-semibold text-gray-700">Ticket:</span> {{ currentTicket.ticket_number }} - {{ currentTicket.ticket_summary }}</p>
+                    <p><span class="font-semibold text-gray-700">Time to log:</span> {{ formatTime(currentTicket.time_spent_seconds) }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Worklog Description</label>
+                    <textarea v-model="worklogDescription" class="input h-32" placeholder="Describe what you did..." title="Describe what you did"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+            <button @click="submitWorklog" class="btn btn-primary sm:ml-3">
+              Submit to Jira
+            </button>
+            <button @click="saveForLater" class="btn btn-secondary mt-3 sm:mt-0">
+              Save for Later
+            </button>
+            <button @click="showSaveDialog = false" class="btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mt-3 sm:mt-0">
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -66,7 +121,6 @@ const fetchTickets = async () => {
   const response = await axios.get('/api/tickets', { headers: { Authorization: `Bearer ${token}` } });
   tickets.value = response.data.map(t => ({
     ...t,
-    // If it was running, calculate elapsed time since last start
     time_spent_seconds: t.time_spent_seconds + (t.last_stopwatch_start ? Math.floor((new Date() - new Date(t.last_stopwatch_start)) / 1000) : 0)
   }));
 };
@@ -106,7 +160,6 @@ const onTimeInput = (ticket, value) => {
   const seconds = parseTime(value);
   if (!isNaN(seconds)) {
     ticket.time_spent_seconds = seconds;
-    // Reset stopwatch if manually changed
     ticket.last_stopwatch_start = null;
     updateTicket(ticket);
   }
@@ -114,12 +167,10 @@ const onTimeInput = (ticket, value) => {
 
 const toggleStopwatch = (ticket) => {
   if (ticket.last_stopwatch_start) {
-    // Pause
     const elapsed = Math.floor((new Date() - new Date(ticket.last_stopwatch_start)) / 1000);
     ticket.time_spent_seconds += elapsed;
     ticket.last_stopwatch_start = null;
   } else {
-    // Start
     ticket.last_stopwatch_start = new Date().toISOString();
   }
   updateTicket(ticket);
@@ -147,7 +198,6 @@ const submitWorklog = async () => {
     
     alert('Worklog submitted successfully!');
     showSaveDialog.value = false;
-    // Optionally clear after submit
     currentTicket.value.time_spent_seconds = 0;
     currentTicket.value.saved_description = '';
     currentTicket.value.last_stopwatch_start = null;
@@ -179,7 +229,7 @@ const confirmDelete = async (ticket) => {
 
 const formatTime = (totalSeconds) => {
   if (!totalSeconds) return '0m';
-  const days = Math.floor(totalSeconds / (8 * 3600)); // Assuming 8h workday for Jira? Standard is usually customizable, let's use 8h
+  const days = Math.floor(totalSeconds / (8 * 3600));
   const remainingAfterDays = totalSeconds % (8 * 3600);
   const hours = Math.floor(remainingAfterDays / 3600);
   const minutes = Math.floor((remainingAfterDays % 3600) / 60);
@@ -217,43 +267,3 @@ onUnmounted(() => {
   clearInterval(timerInterval);
 });
 </script>
-
-<style scoped>
-.ticket-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-}
-.ticket-summary {
-  flex: 1;
-  font-size: 0.9em;
-  color: #666;
-}
-.modal {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 400px;
-}
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-textarea {
-  width: 100%;
-  height: 100px;
-}
-</style>

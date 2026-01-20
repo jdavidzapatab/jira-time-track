@@ -1,20 +1,9 @@
-mod handlers;
-mod middleware;
-mod models;
-mod utils;
-
-use axum::{
-    middleware::from_fn_with_state,
-    routing::{get, post, put, delete},
-    Router,
-};
+use jira_time_track::app;
 use dotenvy::dotenv;
 use sqlx::mysql::MySqlPoolOptions;
 use std::env;
 use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInit};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
@@ -40,38 +29,7 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
-    let api_routes = Router::new()
-        .nest(
-            "/auth",
-            Router::new()
-                .route("/register", post(handlers::auth::register))
-                .route("/confirm", post(handlers::auth::confirm))
-                .route("/login", post(handlers::auth::login))
-                .route("/change-password-request", post(handlers::auth::request_password_change)),
-        )
-        .nest(
-            "/servers",
-            Router::new()
-                .route("/", get(handlers::jira_servers::list_servers).post(handlers::jira_servers::create_server))
-                .route("/:id", delete(handlers::jira_servers::delete_server))
-                .route("/:id/test", post(handlers::jira_servers::test_credentials))
-                .layer(from_fn_with_state(pool.clone(), middleware::auth::auth)),
-        )
-        .nest(
-            "/tickets",
-            Router::new()
-                .route("/", get(handlers::jira_tickets::list_tickets).post(handlers::jira_tickets::create_ticket))
-                .route("/:id", put(handlers::jira_tickets::update_ticket).delete(handlers::jira_tickets::delete_ticket))
-                .route("/:id/summary", get(handlers::jira_tickets::get_ticket_summary))
-                .route("/:id/worklog", post(handlers::jira_tickets::submit_worklog))
-                .layer(from_fn_with_state(pool.clone(), middleware::auth::auth)),
-        )
-        .with_state(pool);
-
-    let app = Router::new()
-        .nest("/api", api_routes)
-        .fallback_service(ServeDir::new("dist").fallback(ServeDir::new("dist/index.html")))
-        .layer(CorsLayer::permissive());
+    let app = app(pool).await;
 
     let port = env::var("APP_PORT").unwrap_or_else(|_| "3000".to_string());
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();

@@ -1,41 +1,76 @@
 <template>
-  <div>
-    <h2>Jira Servers</h2>
-    <form @submit.prevent="addServer">
-      <input v-model="newServer.name" placeholder="Name" required title="Friendly name for the server" />
-      <input v-model="newServer.url" placeholder="URL" required title="Jira Server URL (e.g. https://your-domain.atlassian.net)" />
-      <input v-model="newServer.username" placeholder="Username" required title="Your Jira username or email" />
-      <div class="password-field">
-        <input :type="showPassword ? 'text' : 'password'" v-model="newServer.password" placeholder="Password" required title="Your Jira password or API token" />
-        <button type="button" @click="showPassword = !showPassword" title="Toggle password visibility">
-          <Eye v-if="!showPassword" :size="16" />
-          <EyeOff v-else :size="16" />
-        </button>
-      </div>
-      <button type="submit" title="Add new Jira server">Add Server</button>
-    </form>
+  <div class="space-y-6">
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-900">Jira Servers</h1>
+    </div>
 
-    <table v-if="servers.length">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>URL</th>
-          <th>Username</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="server in servers" :key="server.id">
-          <td>{{ server.name }}</td>
-          <td>{{ server.url }}</td>
-          <td>{{ server.username }}</td>
-          <td>
-            <button @click="testCredentials(server.id)" title="Test connection to this server"><RefreshCcw :size="16" /></button>
-            <button @click="confirmDelete(server)" title="Delete this server"><Trash2 :size="16" /></button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="card">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">Add New Server</h2>
+      <form @submit.prevent="addServer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Name</label>
+          <input v-model="newServer.name" placeholder="E.g. Company Jira" required class="input mt-1" title="Friendly name for the server" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">URL</label>
+          <input v-model="newServer.url" placeholder="https://your-domain.atlassian.net" required class="input mt-1" title="Jira Server URL" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Username</label>
+          <input v-model="newServer.username" placeholder="Email or Username" required class="input mt-1" title="Your Jira username or email" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Password / API Token</label>
+          <div class="relative mt-1">
+            <input :type="showPassword ? 'text' : 'password'" v-model="newServer.password" placeholder="Password" required class="input pr-10" title="Your Jira password or API token" />
+            <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" title="Toggle password visibility">
+              <Eye v-if="!showPassword" :size="18" />
+              <EyeOff v-else :size="18" />
+            </button>
+          </div>
+        </div>
+        <div class="md:col-span-2 flex justify-end">
+          <button type="submit" class="btn btn-primary" title="Add new Jira server">
+            Add Server
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="server in servers" :key="server.id" class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ server.name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ server.url }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ server.username }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                <button @click="testCredentials(server.id)" class="text-blue-600 hover:text-blue-900 inline-flex items-center" title="Test connection to this server">
+                  <RefreshCcw :size="18" />
+                </button>
+                <button @click="confirmDelete(server)" class="text-red-600 hover:text-red-900 inline-flex items-center" title="Delete this server">
+                  <Trash2 :size="18" />
+                </button>
+              </td>
+            </tr>
+            <tr v-if="servers.length === 0">
+              <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                No servers added yet.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -97,23 +132,3 @@ const confirmDelete = async (server) => {
 
 onMounted(fetchServers);
 </script>
-
-<style scoped>
-.password-field {
-  display: inline-flex;
-  align-items: center;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-th, td {
-  border: 1px solid #ccc;
-  padding: 8px;
-  text-align: left;
-}
-button {
-  margin-right: 5px;
-}
-</style>
