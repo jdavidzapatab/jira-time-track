@@ -2,6 +2,7 @@
 <project version="4">
   <component name="DataSourcePerFileMappings">
     <file url="file://$PROJECT_DIR$/migrations/20260120153000_initial_schema.sql" value="31d4ceaf-8d9c-436c-9f36-bbcf7213cb50" />
+    <file url="file://$PROJECT_DIR$/migrations/20260120194500_add_sort_order_to_tickets.sql" value="31d4ceaf-8d9c-436c-9f36-bbcf7213cb50" />
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/31d4ceaf-8d9c-436c-9f36-bbcf7213cb50/console.sql" value="31d4ceaf-8d9c-436c-9f36-bbcf7213cb50" />
   </component>
 </project>
