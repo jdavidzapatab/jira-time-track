@@ -1,17 +1,17 @@
 <template>
   <div class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 card text-center">
-      <h2 class="text-2xl font-bold text-gray-900">Confirming your account...</h2>
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Confirming your account...</h2>
       <div v-if="loading" class="animate-pulse flex space-x-4 justify-center">
-        <div class="rounded-full bg-gray-200 h-10 w-10"></div>
+        <div class="rounded-full bg-gray-200 dark:bg-gray-700 h-10 w-10"></div>
       </div>
-      <div v-if="error" class="text-red-600 bg-red-50 p-4 rounded">
+      <div v-if="error" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-4 rounded">
         {{ error }}
         <div class="mt-4">
           <router-link to="/login" class="btn btn-secondary">Go to Login</router-link>
         </div>
       </div>
-      <div v-if="success" class="text-green-600 bg-green-50 p-4 rounded">
+      <div v-if="success" class="text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-4 rounded">
         Account confirmed successfully!
         <div class="mt-4">
           <router-link to="/login" class="btn btn-primary">Sign in now</router-link>

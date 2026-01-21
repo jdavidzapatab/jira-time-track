@@ -3,18 +3,18 @@
     <div class="max-w-md w-full space-y-8 card">
       <div v-if="!token">
         <div>
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Request Password Change</h2>
-          <p class="mt-2 text-center text-sm text-gray-600">
+          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">Request Password Change</h2>
+          <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             We'll send a link to your email to reset your password.
           </p>
         </div>
         <form class="mt-8 space-y-6" @submit.prevent="requestChange">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Email address</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email address</label>
             <input type="email" required v-model="email" class="input mt-1" placeholder="Email address" />
           </div>
 
-          <div v-if="success" class="text-green-600 text-sm text-center bg-green-50 p-2 rounded">
+          <div v-if="success" class="text-green-600 dark:text-green-400 text-sm text-center bg-green-50 dark:bg-green-900/20 p-2 rounded">
             {{ success }}
           </div>
 
@@ -28,24 +28,24 @@
 
       <div v-else>
         <div>
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Set New Password</h2>
-          <p class="mt-2 text-center text-sm text-gray-600">
+          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">Set New Password</h2>
+          <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Enter your new password below.
           </p>
         </div>
         <form class="mt-8 space-y-6" @submit.prevent="executeChange">
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700">New Password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
               <input type="password" required v-model="password" class="input mt-1" placeholder="Minimum 8 characters" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
               <input type="password" required v-model="passwordConfirmation" class="input mt-1" placeholder="Confirm password" />
             </div>
           </div>
 
-          <div v-if="success" class="text-green-600 text-sm text-center bg-green-50 p-2 rounded">
+          <div v-if="success" class="text-green-600 dark:text-green-400 text-sm text-center bg-green-50 dark:bg-green-900/20 p-2 rounded">
             {{ success }}
           </div>
 
@@ -56,7 +56,7 @@
           </div>
           
           <div class="text-center mt-4" v-if="success">
-            <router-link to="/login" class="text-blue-600 hover:text-blue-500 font-medium">Go to Login</router-link>
+            <router-link to="/login" class="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium">Go to Login</router-link>
           </div>
         </form>
       </div>

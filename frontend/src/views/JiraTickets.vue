@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 pb-20 sm:pb-6">
     <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-gray-900">Jira Tickets</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Jira Tickets</h1>
       <button ref="topAddButton" @click="addTicket" class="hidden sm:flex btn btn-primary" title="Add a new ticket line item">
         <Plus :size="20" />
         Add Ticket
@@ -26,16 +26,16 @@
       class="space-y-4"
     >
       <template #item="{ element: ticket }">
-        <div class="card flex flex-col gap-0 p-0 overflow-hidden relative group border-l-4 transition-colors" :class="ticket.fetchError ? 'border-l-red-500 bg-red-50' : 'border-l-transparent'">
+        <div class="card flex flex-col gap-0 p-0 overflow-hidden relative group border-l-4 transition-colors" :class="ticket.fetchError ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 'border-l-transparent'">
           <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 sm:px-6">
             <!-- Drag Handle -->
-            <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 flex-shrink-0">
+            <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1 flex-shrink-0">
               <GripVertical :size="20" />
             </div>
 
             <div class="flex-1 min-w-0 flex flex-col gap-1">
               <!-- Server Selector (Small dropdown above Ticket Number) -->
-              <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="border-none bg-transparent p-0 text-[10px] text-gray-400 hover:text-gray-600 focus:ring-0 w-fit cursor-pointer" title="Select Jira Server">
+              <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="border-none bg-transparent p-0 text-[10px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 focus:ring-0 w-fit cursor-pointer" title="Select Jira Server">
                 <option :value="null">Select Server</option>
                 <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
               </select>
@@ -45,18 +45,18 @@
                 <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" @keyup.enter="onTicketNumberBlur(ticket)" class="input py-1 text-xs sm:text-sm font-bold w-24 sm:w-32 flex-shrink-0" placeholder="Ticket #" title="Enter Jira Ticket Number" />
                 
                 <!-- Ticket Summary -->
-                <div class="flex-1 text-[11px] sm:text-xs text-gray-800 sm:text-gray-600 font-medium sm:font-normal line-clamp-1 sm:line-clamp-2 leading-tight">
+                <div class="flex-1 text-[11px] sm:text-xs text-gray-800 sm:text-gray-600 dark:text-gray-200 sm:dark:text-gray-400 font-medium sm:font-normal line-clamp-1 sm:line-clamp-2 leading-tight">
                   {{ ticket.ticket_summary || 'No summary fetched' }}
                 </div>
               </div>
             </div>
 
-            <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 sm:border-t-0">
+            <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 dark:border-gray-800 sm:border-t-0">
               <div class="flex flex-col items-center">
-                <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-blue-600 animate-pulse">
+                <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-blue-600 dark:text-blue-400 animate-pulse">
                   {{ formatStopwatch(ticket.time_spent_seconds) }}
                 </div>
-                <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400">
+                <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400 dark:text-gray-500">
                   00:00:00
                 </div>
                 <input 
@@ -70,7 +70,7 @@
               </div>
 
               <div class="flex items-center space-x-1 sm:space-x-2">
-                <button @click="toggleStopwatch(ticket)" class="p-1.5 sm:p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-green-600 bg-green-50 hover:bg-green-100'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
+                <button @click="toggleStopwatch(ticket)" class="p-1.5 sm:p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30' : 'text-green-600 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
                   <template v-if="ticket.last_stopwatch_start">
                     <Pause :size="16" class="sm:hidden" />
                     <Pause :size="20" class="hidden sm:block" />
@@ -81,22 +81,22 @@
                   </template>
                 </button>
 
-                <button @click="openJiraTicket(ticket)" class="p-1.5 sm:p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors" title="Open ticket in Jira">
+                <button @click="openJiraTicket(ticket)" class="p-1.5 sm:p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full transition-colors" title="Open ticket in Jira">
                   <ExternalLink :size="16" class="sm:hidden" />
                   <ExternalLink :size="20" class="hidden sm:block" />
                 </button>
 
-                <button @click="openSaveDialog(ticket)" class="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Save worklog to Jira">
+                <button @click="openSaveDialog(ticket)" class="p-1.5 sm:p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors" title="Save worklog to Jira">
                   <Save :size="16" class="sm:hidden" />
                   <Save :size="20" class="hidden sm:block" />
                 </button>
                 
-                <button @click="confirmClear(ticket)" class="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Clear ticket data">
+                <button @click="confirmClear(ticket)" class="p-1.5 sm:p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors" title="Clear ticket data">
                   <Eraser :size="16" class="sm:hidden" />
                   <Eraser :size="20" class="hidden sm:block" />
                 </button>
                 
-                <button @click="confirmDelete(ticket)" class="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Delete ticket line">
+                <button @click="confirmDelete(ticket)" class="p-1.5 sm:p-2 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors" title="Delete ticket line">
                   <Trash2 :size="16" class="sm:hidden" />
                   <Trash2 :size="20" class="hidden sm:block" />
                 </button>
@@ -104,7 +104,7 @@
             </div>
           </div>
           <!-- Error message at the bottom -->
-          <div v-if="ticket.fetchError" class="bg-red-100 text-red-700 text-[10px] px-4 py-1 border-t border-red-200">
+          <div v-if="ticket.fetchError" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-[10px] px-4 py-1 border-t border-red-200 dark:border-red-900/50">
             {{ ticket.fetchError }}
           </div>
         </div>
@@ -123,34 +123,34 @@
         <!-- This element is to trick the browser into centering the modal contents. -->
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        <div class="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div class="relative inline-block align-middle bg-white dark:bg-gray-900 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white dark:bg-gray-900 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
                   Save Worklog to Jira
                 </h3>
                 <div class="mt-4 space-y-3">
-                  <div class="bg-gray-50 p-3 rounded text-sm space-y-1">
-                    <p><span class="font-semibold text-gray-700">Ticket:</span> {{ currentTicket.ticket_number }} - {{ currentTicket.ticket_summary }}</p>
-                    <p><span class="font-semibold text-gray-700">Time to log:</span> {{ formatTime(currentTicket.time_spent_seconds) }}</p>
+                  <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded text-sm space-y-1">
+                    <p><span class="font-semibold text-gray-700 dark:text-gray-300">Ticket:</span> {{ currentTicket.ticket_number }} - {{ currentTicket.ticket_summary }}</p>
+                    <p><span class="font-semibold text-gray-700 dark:text-gray-300">Time to log:</span> {{ formatTime(currentTicket.time_spent_seconds) }}</p>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Worklog Description</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Worklog Description</label>
                     <textarea v-model="worklogDescription" class="input h-32" placeholder="Describe what you did..." title="Describe what you did"></textarea>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+          <div class="bg-gray-50 dark:bg-gray-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
             <button @click="submitWorklog" class="btn btn-primary sm:ml-3">
               Submit to Jira
             </button>
             <button @click="saveForLater" class="btn btn-secondary mt-3 sm:mt-0">
               Save for Later
             </button>
-            <button @click="showSaveDialog = false" class="btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mt-3 sm:mt-0">
+            <button @click="showSaveDialog = false" class="btn border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 mt-3 sm:mt-0">
               Cancel
             </button>
           </div>
