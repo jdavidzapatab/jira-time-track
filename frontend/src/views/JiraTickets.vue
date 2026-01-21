@@ -26,7 +26,11 @@
       class="space-y-4"
     >
       <template #item="{ element: ticket }">
-        <div class="card flex flex-col gap-0 p-0 overflow-hidden relative group border-l-4 transition-colors" :class="ticket.fetchError ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 'border-l-transparent'">
+        <div class="card flex flex-col gap-0 p-0 overflow-hidden relative group border-l-4 transition-colors" 
+             :class="[
+               ticket.fetchError ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 'border-l-transparent',
+               ticket.last_stopwatch_start ? 'animate-soft-pulse' : ''
+             ]">
           <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 sm:px-6">
             <!-- Drag Handle -->
             <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1 flex-shrink-0">
@@ -53,7 +57,7 @@
 
             <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 dark:border-gray-800 sm:border-t-0">
               <div class="flex flex-col items-center">
-                <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-blue-600 dark:text-blue-400 animate-pulse">
+                <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-green-600 dark:text-green-400 animate-pulse">
                   {{ formatStopwatch(ticket.time_spent_seconds) }}
                 </div>
                 <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400 dark:text-gray-500">
@@ -173,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, inject, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, inject, reactive, nextTick } from 'vue';
 import draggable from 'vuedraggable';
 import { Play, Pause, Save, Eraser, Trash2, Plus, GripVertical, ExternalLink } from 'lucide-vue-next';
 import ConfirmModal from '../components/ConfirmModal.vue';
@@ -258,6 +262,16 @@ const addTicket = async () => {
     });
     const newTicket = await response.json();
     tickets.value.push({ ...newTicket, fetchError: null });
+
+    // Scroll to new item and focus input
+    await nextTick();
+    const ticketElements = document.querySelectorAll('.card');
+    const lastTicket = ticketElements[ticketElements.length - 1];
+    if (lastTicket) {
+      lastTicket.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = lastTicket.querySelector('input[placeholder="Ticket #"]');
+      if (input) input.focus();
+    }
   } catch (e) {
     toast(e.message, 'error');
   }
