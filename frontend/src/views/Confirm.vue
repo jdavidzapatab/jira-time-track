@@ -22,14 +22,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, inject } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from 'axios';
 
 const route = useRoute();
 const loading = ref(true);
 const error = ref('');
 const success = ref(false);
+const toast = inject('toast');
 
 onMounted(async () => {
   const token = route.query.token;
@@ -40,10 +40,22 @@ onMounted(async () => {
   }
 
   try {
-    await axios.post('/api/auth/confirm', { token });
+    const response = await fetch('/api/auth/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Confirmation failed');
+    }
+
     success.value = true;
+    toast('Account confirmed successfully!');
   } catch (err) {
-    error.value = err.response?.data || 'Confirmation failed';
+    error.value = err.message;
+    toast(err.message, 'error');
   } finally {
     loading.value = false;
   }

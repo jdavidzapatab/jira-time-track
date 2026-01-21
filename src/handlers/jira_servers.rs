@@ -7,8 +7,8 @@ use crate::repositories::jira_servers as server_repo;
 use crate::services::jira as jira_service;
 use crate::utils::encryption::encrypt;
 use serde::{Deserialize, Serialize};
-use sqlx::MySqlPool;
 use uuid::Uuid;
+use crate::AppState;
 
 #[derive(Deserialize)]
 pub struct CreateServerRequest {
@@ -27,10 +27,10 @@ pub struct JiraServerResponse {
 }
 
 pub async fn list_servers(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
 ) -> Result<Json<Vec<JiraServerResponse>>, (StatusCode, String)> {
-    let servers = server_repo::list_servers_by_user(&pool, user_id)
+    let servers = server_repo::list_servers_by_user(&state.pool, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -48,7 +48,7 @@ pub async fn list_servers(
 }
 
 pub async fn create_server(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Json(payload): Json<CreateServerRequest>,
 ) -> Result<Json<JiraServerResponse>, (StatusCode, String)> {
@@ -56,7 +56,7 @@ pub async fn create_server(
     let encrypted_password = encrypt(&payload.password);
 
     server_repo::create_server(
-        &pool,
+        &state.pool,
         id,
         user_id,
         &payload.name,
@@ -76,11 +76,11 @@ pub async fn create_server(
 }
 
 pub async fn delete_server(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Path(server_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let rows_affected = server_repo::delete_server(&pool, server_id, user_id)
+    let rows_affected = server_repo::delete_server(&state.pool, server_id, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -91,12 +91,29 @@ pub async fn delete_server(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Deserialize)]
+pub struct TestServerRequest {
+    pub url: String,
+    pub username: String,
+    pub password: String,
+}
+
+pub async fn test_new_server_credentials(
+    Json(payload): Json<TestServerRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    jira_service::test_connection_params(&payload.url, &payload.username, &payload.password)
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+
+    Ok(StatusCode::OK)
+}
+
 pub async fn test_credentials(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Path(server_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let server = server_repo::find_server_by_id(&pool, server_id, user_id)
+    let server = server_repo::find_server_by_id(&state.pool, server_id, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "Server not found".to_string()))?;

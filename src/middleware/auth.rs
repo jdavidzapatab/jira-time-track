@@ -5,12 +5,12 @@ use axum::{
     response::Response,
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use sqlx::MySqlPool;
 use std::env;
 use crate::utils::Claims;
+use crate::AppState;
 
 pub async fn auth(
-    State(_pool): State<MySqlPool>,
+    State(_state): State<AppState>,
     mut req: Request,
     next: Next,
 ) -> Result<Response, (StatusCode, String)> {

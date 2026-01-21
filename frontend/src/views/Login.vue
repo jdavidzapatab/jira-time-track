@@ -16,10 +16,6 @@
           </div>
         </div>
 
-        <div v-if="error" class="text-red-600 text-sm text-center bg-red-50 p-2 rounded">
-          {{ error }}
-        </div>
-
         <div>
           <button type="submit" :disabled="loading" class="w-full btn btn-primary">
             {{ loading ? 'Signing in...' : 'Sign in' }}
@@ -36,28 +32,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import axios from 'axios';
+import { ref, inject } from 'vue';
 import { useRouter } from 'vue-router';
 
 const email = ref('');
 const password = ref('');
-const error = ref('');
 const loading = ref(false);
 const router = useRouter();
+const toast = inject('toast');
 
 const login = async () => {
   loading.value = true;
-  error.value = '';
   try {
-    const response = await axios.post('/api/auth/login', {
-      email: email.value,
-      password: password.value,
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.value,
+        password: password.value,
+      }),
     });
-    localStorage.setItem('token', response.data.token);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Login failed');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    toast('Logged in successfully');
     router.push('/tickets');
   } catch (err) {
-    error.value = err.response?.data || 'Login failed';
+    toast(err.message, 'error');
   } finally {
     loading.value = false;
   }

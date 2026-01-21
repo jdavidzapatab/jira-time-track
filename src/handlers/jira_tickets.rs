@@ -8,9 +8,9 @@ use crate::repositories::jira_tickets as ticket_repo;
 use crate::repositories::jira_servers as server_repo;
 use crate::services::jira as jira_service;
 use serde::Deserialize;
-use sqlx::MySqlPool;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use crate::AppState;
 
 #[derive(Deserialize)]
 pub struct CreateTicketRequest {
@@ -19,10 +19,10 @@ pub struct CreateTicketRequest {
 }
 
 pub async fn list_tickets(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
 ) -> Result<Json<Vec<JiraTicket>>, (StatusCode, String)> {
-    let tickets = ticket_repo::list_tickets_by_user(&pool, user_id)
+    let tickets = ticket_repo::list_tickets_by_user(&state.pool, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -30,17 +30,17 @@ pub async fn list_tickets(
 }
 
 pub async fn create_ticket(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Json(payload): Json<CreateTicketRequest>,
 ) -> Result<Json<JiraTicket>, (StatusCode, String)> {
     let id = Uuid::new_v4();
 
-    ticket_repo::create_ticket(&pool, id, user_id, payload.server_id, payload.ticket_number.as_deref())
+    ticket_repo::create_ticket(&state.pool, id, user_id, payload.server_id, payload.ticket_number.as_deref())
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let ticket = ticket_repo::find_ticket_by_id(&pool, id)
+    let ticket = ticket_repo::find_ticket_by_id(&state.pool, id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch created ticket".to_string()))?;
@@ -59,13 +59,13 @@ pub struct UpdateTicketRequest {
 }
 
 pub async fn update_ticket(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Path(ticket_id): Path<Uuid>,
     Json(payload): Json<UpdateTicketRequest>,
 ) -> Result<Json<JiraTicket>, (StatusCode, String)> {
     ticket_repo::update_ticket(
-        &pool,
+        &state.pool,
         ticket_id,
         user_id,
         payload.server_id,
@@ -78,7 +78,7 @@ pub async fn update_ticket(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let ticket = ticket_repo::find_ticket_by_id(&pool, ticket_id)
+    let ticket = ticket_repo::find_ticket_by_id(&state.pool, ticket_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "Ticket not found".to_string()))?;
@@ -87,11 +87,11 @@ pub async fn update_ticket(
 }
 
 pub async fn delete_ticket(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Path(ticket_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let rows_affected = ticket_repo::delete_ticket(&pool, ticket_id, user_id)
+    let rows_affected = ticket_repo::delete_ticket(&state.pool, ticket_id, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -109,12 +109,12 @@ pub struct SubmitWorklogRequest {
 }
 
 pub async fn submit_worklog(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Path(ticket_id): Path<Uuid>,
     Json(payload): Json<SubmitWorklogRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let ticket = ticket_repo::find_ticket_by_id_and_user(&pool, ticket_id, user_id)
+    let ticket = ticket_repo::find_ticket_by_id_and_user(&state.pool, ticket_id, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "Ticket not found".to_string()))?;
@@ -122,7 +122,7 @@ pub async fn submit_worklog(
     let server_id = ticket.server_id.ok_or((StatusCode::BAD_REQUEST, "No server selected for this ticket".to_string()))?;
     let ticket_number = ticket.ticket_number.as_ref().ok_or((StatusCode::BAD_REQUEST, "No ticket number for this ticket".to_string()))?;
 
-    let server = server_repo::find_server_by_id_only(&pool, server_id)
+    let server = server_repo::find_server_by_id_only(&state.pool, server_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Server not found".to_string()))?;
@@ -135,11 +135,11 @@ pub async fn submit_worklog(
 }
 
 pub async fn get_ticket_summary(
-    State(pool): State<MySqlPool>,
+    State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
     Path(ticket_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let ticket = ticket_repo::find_ticket_by_id_and_user(&pool, ticket_id, user_id)
+    let ticket = ticket_repo::find_ticket_by_id_and_user(&state.pool, ticket_id, user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "Ticket not found".to_string()))?;
@@ -147,7 +147,7 @@ pub async fn get_ticket_summary(
     let server_id = ticket.server_id.ok_or((StatusCode::BAD_REQUEST, "No server selected".to_string()))?;
     let ticket_number = ticket.ticket_number.as_ref().ok_or((StatusCode::BAD_REQUEST, "No ticket number".to_string()))?;
 
-    let server = server_repo::find_server_by_id_only(&pool, server_id)
+    let server = server_repo::find_server_by_id_only(&state.pool, server_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Server not found".to_string()))?;
@@ -156,9 +156,26 @@ pub async fn get_ticket_summary(
         .await
         .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
-    ticket_repo::update_ticket_summary(&pool, ticket_id, &summary)
+    ticket_repo::update_ticket_summary(&state.pool, ticket_id, &summary)
         .await
         .ok();
 
     Ok(Json(serde_json::json!({ "summary": summary })))
+}
+
+#[derive(Deserialize)]
+pub struct ReorderTicketsRequest {
+    pub ticket_ids: Vec<Uuid>,
+}
+
+pub async fn reorder_tickets(
+    State(state): State<AppState>,
+    Extension(user_id): Extension<Uuid>,
+    Json(payload): Json<ReorderTicketsRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    ticket_repo::update_tickets_order(&state.pool, user_id, &payload.ticket_ids)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::OK)
 }

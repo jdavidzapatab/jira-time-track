@@ -5,10 +5,14 @@ use serde_json::Value;
 
 pub async fn test_connection(server: &JiraServer) -> Result<(), String> {
     let password = decrypt(&server.encrypted_password);
+    test_connection_params(&server.url, &server.username, &password).await
+}
+
+pub async fn test_connection_params(url: &str, username: &str, password: &str) -> Result<(), String> {
     let client = Client::new();
     let resp = client
-        .get(format!("{}/rest/api/2/myself", server.url))
-        .basic_auth(&server.username, Some(password))
+        .get(format!("{}/rest/api/2/myself", url))
+        .basic_auth(username, Some(password))
         .send()
         .await
         .map_err(|e| format!("Failed to connect to Jira: {}", e))?;

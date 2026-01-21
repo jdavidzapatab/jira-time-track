@@ -36,6 +36,7 @@ pub struct JiraTicket {
     pub time_spent_seconds: i32,
     pub saved_description: Option<String>,
     pub last_stopwatch_start: Option<DateTime<Utc>>,
+    pub sort_order: i32,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }

@@ -50,3 +50,14 @@ pub async fn update_confirmation_token(pool: &MySqlPool, email: &str, token: &st
     .await?;
     Ok(result.rows_affected())
 }
+
+pub async fn update_password(pool: &MySqlPool, token: &str, password_hash: &str) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE users SET password_hash = ?, is_confirmed = TRUE, confirmation_token = NULL WHERE confirmation_token = ?",
+    )
+    .bind(password_hash)
+    .bind(token)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}

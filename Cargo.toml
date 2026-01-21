@@ -24,6 +24,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 hex = "0.4"
 base64 = "0.22"
 rand = "0.8"
+lettre = { version = "0.11", features = ["tokio1-native-tls", "hostname"] }
 
 [dev-dependencies]
 axum-test = "16.0"

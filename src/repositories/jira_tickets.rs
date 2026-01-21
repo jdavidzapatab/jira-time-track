@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 
 pub async fn list_tickets_by_user(pool: &MySqlPool, user_id: Uuid) -> Result<Vec<JiraTicket>, sqlx::Error> {
     sqlx::query_as::<_, JiraTicket>(
-        "SELECT * FROM jira_tickets WHERE user_id = ?"
+        "SELECT * FROM jira_tickets WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC"
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -97,4 +97,20 @@ pub async fn delete_ticket(pool: &MySqlPool, id: Uuid, user_id: Uuid) -> Result<
     .execute(pool)
     .await?;
     Ok(result.rows_affected())
+}
+
+pub async fn update_tickets_order(pool: &MySqlPool, user_id: Uuid, ticket_ids: &[Uuid]) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    for (index, id) in ticket_ids.iter().enumerate() {
+        sqlx::query(
+            "UPDATE jira_tickets SET sort_order = ? WHERE id = ? AND user_id = ?"
+        )
+        .bind(index as i32)
+        .bind(id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(())
 }

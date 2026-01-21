@@ -20,13 +20,6 @@
           </div>
         </div>
 
-        <div v-if="error" class="text-red-600 text-sm text-center bg-red-50 p-2 rounded">
-          {{ error }}
-        </div>
-        <div v-if="success" class="text-green-600 text-sm text-center bg-green-50 p-2 rounded">
-          {{ success }}
-        </div>
-
         <div>
           <button type="submit" :disabled="loading" class="w-full btn btn-primary">
             {{ loading ? 'Registering...' : 'Register' }}
@@ -43,29 +36,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import axios from 'axios';
+import { ref, inject } from 'vue';
 
 const email = ref('');
 const password = ref('');
 const passwordConfirmation = ref('');
-const error = ref('');
-const success = ref('');
 const loading = ref(false);
+const toast = inject('toast');
 
 const register = async () => {
   loading.value = true;
-  error.value = '';
-  success.value = '';
   try {
-    await axios.post('/api/auth/register', {
-      email: email.value,
-      password: password.value,
-      password_confirmation: passwordConfirmation.value,
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.value,
+        password: password.value,
+        password_confirmation: passwordConfirmation.value,
+      }),
     });
-    success.value = 'Registration successful! Please check your console (email) for confirmation link.';
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Registration failed');
+    }
+
+    toast('Registration successful! Please check your console (email) for confirmation link.');
   } catch (err) {
-    error.value = err.response?.data || 'Registration failed';
+    toast(err.message, 'error');
   } finally {
     loading.value = false;
   }

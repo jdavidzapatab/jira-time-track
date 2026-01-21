@@ -1,66 +1,113 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 pb-20 sm:pb-6">
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold text-gray-900">Jira Tickets</h1>
-      <button @click="addTicket" class="btn btn-primary" title="Add a new ticket line item">
+      <button @click="addTicket" class="hidden sm:flex btn btn-primary" title="Add a new ticket line item">
+        <Plus :size="20" />
         Add Ticket
       </button>
     </div>
 
-    <div class="space-y-4">
-      <div v-for="ticket in tickets" :key="ticket.id" class="card flex flex-wrap items-center gap-4 py-4 px-6">
-        <div class="w-full md:w-48">
-          <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="input py-1.5" title="Select Jira Server">
-            <option :value="null">Select Server</option>
-            <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
-          </select>
+    <!-- Mobile Fixed Add Button -->
+    <button @click="addTicket" class="sm:hidden fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95 flex items-center justify-center" title="Add a new ticket line item">
+      <Plus :size="24" />
+    </button>
+
+    <draggable 
+      v-model="tickets" 
+      @end="onDragEnd" 
+      item-key="id" 
+      handle=".drag-handle"
+      class="space-y-4"
+    >
+      <template #item="{ element: ticket }">
+        <div class="card flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 sm:px-6 relative group">
+          <!-- Drag Handle -->
+          <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 flex-shrink-0">
+            <GripVertical :size="20" />
+          </div>
+
+          <div class="flex-1 min-w-0 flex flex-col gap-1">
+            <!-- Server Selector (Small dropdown above Ticket Number) -->
+            <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="border-none bg-transparent p-0 text-[10px] text-gray-400 hover:text-gray-600 focus:ring-0 w-fit cursor-pointer" title="Select Jira Server">
+              <option :value="null">Select Server</option>
+              <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+            
+            <div class="flex items-center gap-2">
+              <!-- Ticket Number -->
+              <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" class="input py-1 text-xs sm:text-sm font-bold w-24 sm:w-32 flex-shrink-0" placeholder="Ticket #" title="Enter Jira Ticket Number" />
+              
+              <!-- Ticket Summary -->
+              <div class="flex-1 text-[11px] sm:text-xs text-gray-800 sm:text-gray-600 font-medium sm:font-normal line-clamp-1 sm:line-clamp-2 leading-tight">
+                {{ ticket.ticket_summary || 'No summary fetched' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 sm:border-t-0">
+            <div class="flex flex-col items-center">
+              <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-blue-600 animate-pulse">
+                {{ formatStopwatch(ticket.time_spent_seconds) }}
+              </div>
+              <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400">
+                00:00:00
+              </div>
+              <input 
+                :value="formatTime(ticket.time_spent_seconds)" 
+                @input="e => onTimeInput(ticket, e.target.value)" 
+                @keyup.enter="toggleStopwatch(ticket)"
+                class="input py-1 text-[10px] sm:text-sm text-center font-mono w-20 sm:w-28 mt-0.5" 
+                placeholder="0m" 
+                title="Enter time (e.g. 1h 30m). Press ENTER to start/pause." 
+              />
+            </div>
+
+            <div class="flex items-center space-x-1 sm:space-x-2">
+              <button @click="toggleStopwatch(ticket)" class="p-1.5 sm:p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-green-600 bg-green-50 hover:bg-green-100'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
+                <template v-if="ticket.last_stopwatch_start">
+                  <Pause :size="16" class="sm:hidden" />
+                  <Pause :size="20" class="hidden sm:block" />
+                </template>
+                <template v-else>
+                  <Play :size="16" class="sm:hidden" />
+                  <Play :size="20" class="hidden sm:block" />
+                </template>
+              </button>
+
+              <button @click="openSaveDialog(ticket)" class="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Save worklog to Jira">
+                <Save :size="16" class="sm:hidden" />
+                <Save :size="20" class="hidden sm:block" />
+              </button>
+              
+              <button @click="confirmClear(ticket)" class="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Clear ticket data">
+                <Eraser :size="16" class="sm:hidden" />
+                <Eraser :size="20" class="hidden sm:block" />
+              </button>
+              
+              <button @click="confirmDelete(ticket)" class="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Delete ticket line">
+                <Trash2 :size="16" class="sm:hidden" />
+                <Trash2 :size="20" class="hidden sm:block" />
+              </button>
+            </div>
+          </div>
         </div>
+      </template>
+    </draggable>
 
-        <div class="w-full md:w-32">
-          <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" class="input py-1.5" placeholder="Ticket #" title="Enter Jira Ticket Number (e.g. PROJ-123)" />
-        </div>
-
-        <div class="flex-1 min-w-[200px] text-sm text-gray-600 truncate italic">
-          {{ ticket.ticket_summary || 'No summary fetched' }}
-        </div>
-
-        <div class="w-28">
-          <input :value="formatTime(ticket.time_spent_seconds)" @input="e => onTimeInput(ticket, e.target.value)" class="input py-1.5 text-center font-mono" placeholder="0m" title="Enter time (e.g. 1h 30m, 2d 6h)" />
-        </div>
-
-        <div class="flex items-center space-x-2">
-          <button @click="toggleStopwatch(ticket)" class="p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-green-600 bg-green-50 hover:bg-green-100'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
-            <Pause v-if="ticket.last_stopwatch_start" :size="20" />
-            <Play v-else :size="20" />
-          </button>
-
-          <button @click="openSaveDialog(ticket)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Save worklog to Jira">
-            <Save :size="20" />
-          </button>
-          
-          <button @click="confirmClear(ticket)" class="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Clear ticket data">
-            <Eraser :size="20" />
-          </button>
-          
-          <button @click="confirmDelete(ticket)" class="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Delete ticket line">
-            <Trash2 :size="20" />
-          </button>
-        </div>
-      </div>
-
-      <div v-if="tickets.length === 0" class="card py-12 text-center text-gray-500 italic">
-        No tickets added. Click "Add Ticket" to start tracking time.
-      </div>
+    <div v-if="tickets.length === 0" class="card py-12 text-center text-gray-500 italic text-sm">
+      No tickets added. Click the plus button to start tracking time.
     </div>
 
     <!-- Save Dialog Modal -->
-    <div v-if="showSaveDialog" class="fixed inset-0 z-10 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showSaveDialog = false"></div>
+    <div v-if="showSaveDialog" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showSaveDialog = false"></div>
 
+        <!-- This element is to trick the browser into centering the modal contents. -->
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        <div class="inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -94,63 +141,138 @@
         </div>
       </div>
     </div>
+
+    <ConfirmModal 
+      :show="confirmModal.show"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      :confirmLabel="confirmModal.confirmLabel"
+      :type="confirmModal.type"
+      @confirm="confirmModal.action"
+      @cancel="confirmModal.show = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import axios from 'axios';
-import { Play, Pause, Save, Eraser, Trash2 } from 'lucide-vue-next';
+import { ref, onMounted, onUnmounted, inject, reactive } from 'vue';
+import draggable from 'vuedraggable';
+import { Play, Pause, Save, Eraser, Trash2, Plus, GripVertical } from 'lucide-vue-next';
+import ConfirmModal from '../components/ConfirmModal.vue';
 
 const servers = ref([]);
 const tickets = ref([]);
 const showSaveDialog = ref(false);
 const currentTicket = ref(null);
 const worklogDescription = ref('');
+const toast = inject('toast');
+
+const confirmModal = reactive({
+  show: false,
+  title: '',
+  message: '',
+  confirmLabel: '',
+  type: 'info',
+  action: () => {}
+});
 
 let timerInterval;
 
-const fetchServers = async () => {
+const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem('token');
-  const response = await axios.get('/api/servers', { headers: { Authorization: `Bearer ${token}` } });
-  servers.value = response.data;
+  const headers = {
+    ...options.headers,
+    'Authorization': `Bearer ${token}`,
+  };
+  
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    const errorText = await response.text();
+    throw new Error(errorText || 'Request failed');
+  }
+  return response;
+};
+
+const fetchServers = async () => {
+  try {
+    const response = await fetchWithAuth('/api/servers');
+    servers.value = await response.json();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
 };
 
 const fetchTickets = async () => {
-  const token = localStorage.getItem('token');
-  const response = await axios.get('/api/tickets', { headers: { Authorization: `Bearer ${token}` } });
-  tickets.value = response.data.map(t => ({
-    ...t,
-    time_spent_seconds: t.time_spent_seconds + (t.last_stopwatch_start ? Math.floor((new Date() - new Date(t.last_stopwatch_start)) / 1000) : 0)
-  }));
+  try {
+    const response = await fetchWithAuth('/api/tickets');
+    const data = await response.json();
+    tickets.value = data.map(t => ({
+      ...t,
+      time_spent_seconds: t.time_spent_seconds + (t.last_stopwatch_start ? Math.floor((new Date() - new Date(t.last_stopwatch_start)) / 1000) : 0)
+    }));
+  } catch (e) {
+    toast(e.message, 'error');
+  }
 };
 
 const addTicket = async () => {
-  const token = localStorage.getItem('token');
-  const response = await axios.post('/api/tickets', {}, { headers: { Authorization: `Bearer ${token}` } });
-  tickets.value.push(response.data);
+  try {
+    const response = await fetchWithAuth('/api/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const newTicket = await response.json();
+    tickets.value.push(newTicket);
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+};
+
+const onDragEnd = async () => {
+  const ticketIds = tickets.value.map(t => t.id);
+  try {
+    await fetchWithAuth('/api/tickets/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket_ids: ticketIds }),
+    });
+  } catch (e) {
+    toast('Failed to save ticket order: ' + e.message, 'error');
+  }
 };
 
 const updateTicket = async (ticket) => {
-  const token = localStorage.getItem('token');
-  await axios.put(`/api/tickets/${ticket.id}`, {
-    server_id: ticket.server_id,
-    ticket_number: ticket.ticket_number,
-    ticket_summary: ticket.ticket_summary,
-    time_spent_seconds: ticket.time_spent_seconds,
-    saved_description: ticket.saved_description,
-    last_stopwatch_start: ticket.last_stopwatch_start,
-  }, { headers: { Authorization: `Bearer ${token}` } });
+  try {
+    await fetchWithAuth(`/api/tickets/${ticket.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        server_id: ticket.server_id,
+        ticket_number: ticket.ticket_number,
+        ticket_summary: ticket.ticket_summary,
+        time_spent_seconds: ticket.time_spent_seconds,
+        saved_description: ticket.saved_description,
+        last_stopwatch_start: ticket.last_stopwatch_start,
+      }),
+    });
+  } catch (e) {
+    toast('Failed to update ticket: ' + e.message, 'error');
+  }
 };
 
 const onTicketNumberBlur = async (ticket) => {
   if (ticket.server_id && ticket.ticket_number) {
-    const token = localStorage.getItem('token');
     try {
-      const response = await axios.get(`/api/tickets/${ticket.id}/summary`, { headers: { Authorization: `Bearer ${token}` } });
-      ticket.ticket_summary = response.data.summary;
+      const response = await fetchWithAuth(`/api/tickets/${ticket.id}/summary`);
+      const data = await response.json();
+      ticket.ticket_summary = data.summary;
     } catch (e) {
-      console.error('Failed to fetch summary', e);
+      toast('Failed to fetch summary: ' + e.message, 'warning');
     }
   }
   updateTicket(ticket);
@@ -186,29 +308,37 @@ const saveForLater = async () => {
   currentTicket.value.saved_description = worklogDescription.value;
   await updateTicket(currentTicket.value);
   showSaveDialog.value = false;
+  toast('Description saved for later');
 };
 
 const submitWorklog = async () => {
   try {
-    const token = localStorage.getItem('token');
-    await axios.post(`/api/tickets/${currentTicket.value.id}/worklog`, {
-      time_spent_formatted: formatTime(currentTicket.value.time_spent_seconds),
-      description: worklogDescription.value,
-    }, { headers: { Authorization: `Bearer ${token}` } });
+    await fetchWithAuth(`/api/tickets/${currentTicket.value.id}/worklog`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        time_spent_formatted: formatTime(currentTicket.value.time_spent_seconds),
+        description: worklogDescription.value,
+      }),
+    });
     
-    alert('Worklog submitted successfully!');
+    toast('Worklog submitted successfully!');
     showSaveDialog.value = false;
     currentTicket.value.time_spent_seconds = 0;
     currentTicket.value.saved_description = '';
     currentTicket.value.last_stopwatch_start = null;
     updateTicket(currentTicket.value);
   } catch (e) {
-    alert('Failed to submit: ' + (e.response?.data || 'Unknown error'));
+    toast('Failed to submit: ' + e.message, 'error');
   }
 };
 
-const confirmClear = async (ticket) => {
-  if (confirm('Are you sure you want to clear this ticket line data?')) {
+const confirmClear = (ticket) => {
+  confirmModal.title = 'Clear Ticket Data';
+  confirmModal.message = 'Are you sure you want to clear this ticket line data? This will reset the timer and description.';
+  confirmModal.confirmLabel = 'Clear';
+  confirmModal.type = 'danger';
+  confirmModal.action = async () => {
     ticket.server_id = null;
     ticket.ticket_number = '';
     ticket.ticket_summary = '';
@@ -216,15 +346,31 @@ const confirmClear = async (ticket) => {
     ticket.saved_description = '';
     ticket.last_stopwatch_start = null;
     await updateTicket(ticket);
-  }
+    toast('Ticket data cleared');
+    confirmModal.show = false;
+  };
+  confirmModal.show = true;
 };
 
-const confirmDelete = async (ticket) => {
-  if (confirm('Are you sure you want to delete this ticket line?')) {
-    const token = localStorage.getItem('token');
-    await axios.delete(`/api/tickets/${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
-    tickets.value = tickets.value.filter(t => t.id !== ticket.id);
-  }
+const confirmDelete = (ticket) => {
+  confirmModal.title = 'Delete Ticket';
+  confirmModal.message = 'Are you sure you want to delete this ticket line?';
+  confirmModal.confirmLabel = 'Delete';
+  confirmModal.type = 'danger';
+  confirmModal.action = async () => {
+    try {
+      await fetchWithAuth(`/api/tickets/${ticket.id}`, {
+        method: 'DELETE',
+      });
+      tickets.value = tickets.value.filter(t => t.id !== ticket.id);
+      toast('Ticket deleted');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      confirmModal.show = false;
+    }
+  };
+  confirmModal.show = true;
 };
 
 const formatTime = (totalSeconds) => {
@@ -239,6 +385,13 @@ const formatTime = (totalSeconds) => {
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
   return parts.join(' ');
+};
+
+const formatStopwatch = (totalSeconds) => {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
 };
 
 const parseTime = (str) => {
