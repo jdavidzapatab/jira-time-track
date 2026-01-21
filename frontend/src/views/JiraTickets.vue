@@ -2,14 +2,19 @@
   <div class="space-y-6 pb-20 sm:pb-6">
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold text-gray-900">Jira Tickets</h1>
-      <button @click="addTicket" class="hidden sm:flex btn btn-primary" title="Add a new ticket line item">
+      <button ref="topAddButton" @click="addTicket" class="hidden sm:flex btn btn-primary" title="Add a new ticket line item">
         <Plus :size="20" />
         Add Ticket
       </button>
     </div>
 
-    <!-- Mobile Fixed Add Button -->
-    <button @click="addTicket" class="sm:hidden fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95 flex items-center justify-center" title="Add a new ticket line item">
+    <!-- Floating Add Button (shows when top button is not visible) -->
+    <button 
+      v-if="!isTopButtonVisible"
+      @click="addTicket" 
+      class="fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95 flex items-center justify-center" 
+      title="Add a new ticket line item"
+    >
       <Plus :size="24" />
     </button>
 
@@ -21,75 +26,86 @@
       class="space-y-4"
     >
       <template #item="{ element: ticket }">
-        <div class="card flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 sm:px-6 relative group">
-          <!-- Drag Handle -->
-          <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 flex-shrink-0">
-            <GripVertical :size="20" />
-          </div>
+        <div class="card flex flex-col gap-0 p-0 overflow-hidden relative group border-l-4 transition-colors" :class="ticket.fetchError ? 'border-l-red-500 bg-red-50' : 'border-l-transparent'">
+          <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 sm:px-6">
+            <!-- Drag Handle -->
+            <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 flex-shrink-0">
+              <GripVertical :size="20" />
+            </div>
 
-          <div class="flex-1 min-w-0 flex flex-col gap-1">
-            <!-- Server Selector (Small dropdown above Ticket Number) -->
-            <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="border-none bg-transparent p-0 text-[10px] text-gray-400 hover:text-gray-600 focus:ring-0 w-fit cursor-pointer" title="Select Jira Server">
-              <option :value="null">Select Server</option>
-              <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-            
-            <div class="flex items-center gap-2">
-              <!-- Ticket Number -->
-              <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" class="input py-1 text-xs sm:text-sm font-bold w-24 sm:w-32 flex-shrink-0" placeholder="Ticket #" title="Enter Jira Ticket Number" />
+            <div class="flex-1 min-w-0 flex flex-col gap-1">
+              <!-- Server Selector (Small dropdown above Ticket Number) -->
+              <select v-model="ticket.server_id" @change="updateTicket(ticket)" class="border-none bg-transparent p-0 text-[10px] text-gray-400 hover:text-gray-600 focus:ring-0 w-fit cursor-pointer" title="Select Jira Server">
+                <option :value="null">Select Server</option>
+                <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+              </select>
               
-              <!-- Ticket Summary -->
-              <div class="flex-1 text-[11px] sm:text-xs text-gray-800 sm:text-gray-600 font-medium sm:font-normal line-clamp-1 sm:line-clamp-2 leading-tight">
-                {{ ticket.ticket_summary || 'No summary fetched' }}
+              <div class="flex items-center gap-2">
+                <!-- Ticket Number -->
+                <input v-model="ticket.ticket_number" @blur="onTicketNumberBlur(ticket)" @keyup.enter="onTicketNumberBlur(ticket)" class="input py-1 text-xs sm:text-sm font-bold w-24 sm:w-32 flex-shrink-0" placeholder="Ticket #" title="Enter Jira Ticket Number" />
+                
+                <!-- Ticket Summary -->
+                <div class="flex-1 text-[11px] sm:text-xs text-gray-800 sm:text-gray-600 font-medium sm:font-normal line-clamp-1 sm:line-clamp-2 leading-tight">
+                  {{ ticket.ticket_summary || 'No summary fetched' }}
+                </div>
+              </div>
+            </div>
+
+            <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 sm:border-t-0">
+              <div class="flex flex-col items-center">
+                <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-blue-600 animate-pulse">
+                  {{ formatStopwatch(ticket.time_spent_seconds) }}
+                </div>
+                <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400">
+                  00:00:00
+                </div>
+                <input 
+                  :value="formatTime(ticket.time_spent_seconds)" 
+                  @input="e => onTimeInput(ticket, e.target.value)" 
+                  @keyup.enter="toggleStopwatch(ticket)"
+                  class="input py-1 text-[10px] sm:text-sm text-center font-mono w-20 sm:w-28 mt-0.5" 
+                  placeholder="0m" 
+                  title="Enter time (e.g. 1h 30m). Press ENTER to start/pause." 
+                />
+              </div>
+
+              <div class="flex items-center space-x-1 sm:space-x-2">
+                <button @click="toggleStopwatch(ticket)" class="p-1.5 sm:p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-green-600 bg-green-50 hover:bg-green-100'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
+                  <template v-if="ticket.last_stopwatch_start">
+                    <Pause :size="16" class="sm:hidden" />
+                    <Pause :size="20" class="hidden sm:block" />
+                  </template>
+                  <template v-else>
+                    <Play :size="16" class="sm:hidden" />
+                    <Play :size="20" class="hidden sm:block" />
+                  </template>
+                </button>
+
+                <button @click="openJiraTicket(ticket)" class="p-1.5 sm:p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors" title="Open ticket in Jira">
+                  <ExternalLink :size="16" class="sm:hidden" />
+                  <ExternalLink :size="20" class="hidden sm:block" />
+                </button>
+
+                <button @click="openSaveDialog(ticket)" class="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Save worklog to Jira">
+                  <Save :size="16" class="sm:hidden" />
+                  <Save :size="20" class="hidden sm:block" />
+                </button>
+                
+                <button @click="confirmClear(ticket)" class="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Clear ticket data">
+                  <Eraser :size="16" class="sm:hidden" />
+                  <Eraser :size="20" class="hidden sm:block" />
+                </button>
+                
+                <button @click="confirmDelete(ticket)" class="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Delete ticket line">
+                  <Trash2 :size="16" class="sm:hidden" />
+                  <Trash2 :size="20" class="hidden sm:block" />
+                </button>
               </div>
             </div>
           </div>
-
-          <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 sm:border-t-0">
-            <div class="flex flex-col items-center">
-              <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-blue-600 animate-pulse">
-                {{ formatStopwatch(ticket.time_spent_seconds) }}
-              </div>
-              <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400">
-                00:00:00
-              </div>
-              <input 
-                :value="formatTime(ticket.time_spent_seconds)" 
-                @input="e => onTimeInput(ticket, e.target.value)" 
-                @keyup.enter="toggleStopwatch(ticket)"
-                class="input py-1 text-[10px] sm:text-sm text-center font-mono w-20 sm:w-28 mt-0.5" 
-                placeholder="0m" 
-                title="Enter time (e.g. 1h 30m). Press ENTER to start/pause." 
-              />
-            </div>
-
-            <div class="flex items-center space-x-1 sm:space-x-2">
-              <button @click="toggleStopwatch(ticket)" class="p-1.5 sm:p-2 rounded-full transition-colors" :class="ticket.last_stopwatch_start ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-green-600 bg-green-50 hover:bg-green-100'" :title="ticket.last_stopwatch_start ? 'Pause stopwatch' : 'Start stopwatch'">
-                <template v-if="ticket.last_stopwatch_start">
-                  <Pause :size="16" class="sm:hidden" />
-                  <Pause :size="20" class="hidden sm:block" />
-                </template>
-                <template v-else>
-                  <Play :size="16" class="sm:hidden" />
-                  <Play :size="20" class="hidden sm:block" />
-                </template>
-              </button>
-
-              <button @click="openSaveDialog(ticket)" class="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Save worklog to Jira">
-                <Save :size="16" class="sm:hidden" />
-                <Save :size="20" class="hidden sm:block" />
-              </button>
-              
-              <button @click="confirmClear(ticket)" class="p-1.5 sm:p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" title="Clear ticket data">
-                <Eraser :size="16" class="sm:hidden" />
-                <Eraser :size="20" class="hidden sm:block" />
-              </button>
-              
-              <button @click="confirmDelete(ticket)" class="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Delete ticket line">
-                <Trash2 :size="16" class="sm:hidden" />
-                <Trash2 :size="20" class="hidden sm:block" />
-              </button>
-            </div>
+          <!-- Error message at the bottom -->
+          <div v-if="ticket.fetchError" class="bg-red-100 text-red-700 text-[10px] px-4 py-1 border-t border-red-200">
+            {{ ticket.fetchError }}
           </div>
         </div>
       </template>
@@ -157,7 +173,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, inject, reactive } from 'vue';
 import draggable from 'vuedraggable';
-import { Play, Pause, Save, Eraser, Trash2, Plus, GripVertical } from 'lucide-vue-next';
+import { Play, Pause, Save, Eraser, Trash2, Plus, GripVertical, ExternalLink } from 'lucide-vue-next';
 import ConfirmModal from '../components/ConfirmModal.vue';
 
 const servers = ref([]);
@@ -166,6 +182,10 @@ const showSaveDialog = ref(false);
 const currentTicket = ref(null);
 const worklogDescription = ref('');
 const toast = inject('toast');
+
+const topAddButton = ref(null);
+const isTopButtonVisible = ref(true);
+let scrollObserver;
 
 const confirmModal = reactive({
   show: false,
@@ -212,6 +232,7 @@ const fetchTickets = async () => {
     const data = await response.json();
     tickets.value = data.map(t => ({
       ...t,
+      fetchError: null,
       time_spent_seconds: t.time_spent_seconds + (t.last_stopwatch_start ? Math.floor((new Date() - new Date(t.last_stopwatch_start)) / 1000) : 0)
     }));
   } catch (e) {
@@ -220,14 +241,21 @@ const fetchTickets = async () => {
 };
 
 const addTicket = async () => {
+  let server_id = null;
+  if (tickets.value.length > 0) {
+    server_id = tickets.value[tickets.value.length - 1].server_id;
+  } else if (servers.value.length === 1) {
+    server_id = servers.value[0].id;
+  }
+
   try {
     const response = await fetchWithAuth('/api/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ server_id }),
     });
     const newTicket = await response.json();
-    tickets.value.push(newTicket);
+    tickets.value.push({ ...newTicket, fetchError: null });
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -266,16 +294,18 @@ const updateTicket = async (ticket) => {
 };
 
 const onTicketNumberBlur = async (ticket) => {
+  ticket.fetchError = null;
+  await updateTicket(ticket);
   if (ticket.server_id && ticket.ticket_number) {
     try {
       const response = await fetchWithAuth(`/api/tickets/${ticket.id}/summary`);
       const data = await response.json();
       ticket.ticket_summary = data.summary;
     } catch (e) {
+      ticket.fetchError = e.message;
       toast('Failed to fetch summary: ' + e.message, 'warning');
     }
   }
-  updateTicket(ticket);
 };
 
 const onTimeInput = (ticket, value) => {
@@ -296,6 +326,18 @@ const toggleStopwatch = (ticket) => {
     ticket.last_stopwatch_start = new Date().toISOString();
   }
   updateTicket(ticket);
+};
+
+const openJiraTicket = (ticket) => {
+  if (!ticket.server_id || !ticket.ticket_number) {
+    toast('Please select a server and enter a ticket number first', 'warning');
+    return;
+  }
+  const server = servers.value.find(s => s.id === ticket.server_id);
+  if (server) {
+    const baseUrl = server.url.replace(/\/+$/, '');
+    window.open(`${baseUrl}/browse/${ticket.ticket_number}`, '_blank');
+  }
 };
 
 const openSaveDialog = (ticket) => {
@@ -407,6 +449,15 @@ const parseTime = (str) => {
 onMounted(async () => {
   await fetchServers();
   await fetchTickets();
+
+  scrollObserver = new IntersectionObserver(([entry]) => {
+    isTopButtonVisible.value = entry.isIntersecting;
+  }, { threshold: 0 });
+
+  if (topAddButton.value) {
+    scrollObserver.observe(topAddButton.value);
+  }
+
   timerInterval = setInterval(() => {
     tickets.value.forEach(t => {
       if (t.last_stopwatch_start) {
@@ -417,6 +468,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (scrollObserver) {
+    scrollObserver.disconnect();
+  }
   clearInterval(timerInterval);
 });
 </script>

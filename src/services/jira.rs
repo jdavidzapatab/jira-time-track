@@ -2,12 +2,15 @@ use reqwest::Client;
 use crate::utils::encryption::decrypt;
 use crate::models::JiraServer;
 use serde_json::Value;
+use tracing::instrument;
 
+#[instrument(skip(server))]
 pub async fn test_connection(server: &JiraServer) -> Result<(), String> {
     let password = decrypt(&server.encrypted_password);
     test_connection_params(&server.url, &server.username, &password).await
 }
 
+#[instrument(skip(password))]
 pub async fn test_connection_params(url: &str, username: &str, password: &str) -> Result<(), String> {
     let client = Client::new();
     let resp = client
@@ -24,6 +27,7 @@ pub async fn test_connection_params(url: &str, username: &str, password: &str) -
     }
 }
 
+#[instrument(skip(server))]
 pub async fn get_ticket_summary(server: &JiraServer, ticket_number: &str) -> Result<String, String> {
     let password = decrypt(&server.encrypted_password);
     let client = Client::new();
@@ -44,6 +48,7 @@ pub async fn get_ticket_summary(server: &JiraServer, ticket_number: &str) -> Res
     Ok(summary.to_string())
 }
 
+#[instrument(skip(server))]
 pub async fn submit_worklog(
     server: &JiraServer,
     ticket_number: &str,

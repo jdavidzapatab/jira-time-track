@@ -50,28 +50,32 @@ pub async fn find_ticket_by_id_and_user(pool: &MySqlPool, id: Uuid, user_id: Uui
     .await
 }
 
+pub struct UpdateTicketParams<'a> {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub server_id: Option<Uuid>,
+    pub ticket_number: Option<&'a str>,
+    pub ticket_summary: Option<&'a str>,
+    pub time_spent_seconds: Option<i32>,
+    pub saved_description: Option<&'a str>,
+    pub last_stopwatch_start: Option<DateTime<Utc>>,
+}
+
 pub async fn update_ticket(
     pool: &MySqlPool,
-    id: Uuid,
-    user_id: Uuid,
-    server_id: Option<Uuid>,
-    ticket_number: Option<&str>,
-    ticket_summary: Option<&str>,
-    time_spent_seconds: Option<i32>,
-    saved_description: Option<&str>,
-    last_stopwatch_start: Option<DateTime<Utc>>,
+    params: UpdateTicketParams<'_>,
 ) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         "UPDATE jira_tickets SET server_id = ?, ticket_number = ?, ticket_summary = ?, time_spent_seconds = COALESCE(?, time_spent_seconds), saved_description = ?, last_stopwatch_start = ? WHERE id = ? AND user_id = ?"
     )
-    .bind(server_id)
-    .bind(ticket_number)
-    .bind(ticket_summary)
-    .bind(time_spent_seconds)
-    .bind(saved_description)
-    .bind(last_stopwatch_start)
-    .bind(id)
-    .bind(user_id)
+    .bind(params.server_id)
+    .bind(params.ticket_number)
+    .bind(params.ticket_summary)
+    .bind(params.time_spent_seconds)
+    .bind(params.saved_description)
+    .bind(params.last_stopwatch_start)
+    .bind(params.id)
+    .bind(params.user_id)
     .execute(pool)
     .await?;
     Ok(result.rows_affected())

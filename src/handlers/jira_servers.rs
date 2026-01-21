@@ -9,6 +9,7 @@ use crate::utils::encryption::encrypt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::AppState;
+use tracing::{error, info, debug, instrument};
 
 #[derive(Deserialize)]
 pub struct CreateServerRequest {
@@ -26,13 +27,17 @@ pub struct JiraServerResponse {
     pub username: String,
 }
 
+#[instrument(skip(state))]
 pub async fn list_servers(
     State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
 ) -> Result<Json<Vec<JiraServerResponse>>, (StatusCode, String)> {
     let servers = server_repo::list_servers_by_user(&state.pool, user_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(|e| {
+            error!(error = ?e, user_id = %user_id, "Failed to list servers from database");
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
 
     let response = servers
         .into_iter()
@@ -47,6 +52,7 @@ pub async fn list_servers(
     Ok(Json(response))
 }
 
+#[instrument(skip(state, payload))]
 pub async fn create_server(
     State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
@@ -65,8 +71,12 @@ pub async fn create_server(
         &encrypted_password,
     )
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    .map_err(|e| {
+        error!(error = ?e, user_id = %user_id, server_name = %payload.name, "Failed to create server in database");
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
 
+    info!(user_id = %user_id, server_id = %id, server_name = %payload.name, "Jira server created successfully");
     Ok(Json(JiraServerResponse {
         id,
         name: payload.name,
@@ -75,6 +85,7 @@ pub async fn create_server(
     }))
 }
 
+#[instrument(skip(state))]
 pub async fn delete_server(
     State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
@@ -82,12 +93,17 @@ pub async fn delete_server(
 ) -> Result<StatusCode, (StatusCode, String)> {
     let rows_affected = server_repo::delete_server(&state.pool, server_id, user_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(|e| {
+            error!(error = ?e, user_id = %user_id, server_id = %server_id, "Failed to delete server from database");
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
 
     if rows_affected == 0 {
+        debug!(user_id = %user_id, server_id = %server_id, "Attempted to delete non-existent server");
         return Err((StatusCode::NOT_FOUND, "Server not found".to_string()));
     }
 
+    info!(user_id = %user_id, server_id = %server_id, "Jira server deleted successfully");
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -98,16 +114,22 @@ pub struct TestServerRequest {
     pub password: String,
 }
 
+#[instrument(skip(payload))]
 pub async fn test_new_server_credentials(
     Json(payload): Json<TestServerRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     jira_service::test_connection_params(&payload.url, &payload.username, &payload.password)
         .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+        .map_err(|e| {
+            debug!(error = %e, url = %payload.url, "Jira connection test failed for new server");
+            (StatusCode::BAD_GATEWAY, e)
+        })?;
 
+    info!(url = %payload.url, "Jira connection test successful for new server");
     Ok(StatusCode::OK)
 }
 
+#[instrument(skip(state))]
 pub async fn test_credentials(
     State(state): State<AppState>,
     Extension(user_id): Extension<Uuid>,
@@ -115,12 +137,22 @@ pub async fn test_credentials(
 ) -> Result<StatusCode, (StatusCode, String)> {
     let server = server_repo::find_server_by_id(&state.pool, server_id, user_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-        .ok_or((StatusCode::NOT_FOUND, "Server not found".to_string()))?;
+        .map_err(|e| {
+            error!(error = ?e, user_id = %user_id, server_id = %server_id, "Failed to fetch server for credential test");
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?
+        .ok_or_else(|| {
+            debug!(user_id = %user_id, server_id = %server_id, "Credential test attempted for non-existent server");
+            (StatusCode::NOT_FOUND, "Server not found".to_string())
+        })?;
 
     jira_service::test_connection(&server)
         .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+        .map_err(|e| {
+            debug!(error = %e, user_id = %user_id, server_id = %server_id, "Jira connection test failed for existing server");
+            (StatusCode::BAD_GATEWAY, e)
+        })?;
 
+    info!(user_id = %user_id, server_id = %server_id, "Jira connection test successful for existing server");
     Ok(StatusCode::OK)
 }

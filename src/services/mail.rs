@@ -35,10 +35,9 @@ impl MailService {
             AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp_host).expect("Failed to create SMTP relay")
         };
 
-        if let (Some(user), Some(pass)) = (smtp_user, smtp_pass) {
-            if !user.is_empty() {
-                mailer_builder = mailer_builder.credentials(Credentials::new(user, pass));
-            }
+        let credentials = smtp_user.zip(smtp_pass).filter(|(u, _)| !u.is_empty());
+        if let Some((user, pass)) = credentials {
+            mailer_builder = mailer_builder.credentials(Credentials::new(user, pass));
         }
 
         let transport = mailer_builder

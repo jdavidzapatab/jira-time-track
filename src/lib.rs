@@ -10,10 +10,12 @@ use axum::{
     routing::{get, post, put, delete},
     Router,
 };
+use tower_http::trace::TraceLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 use std::sync::Arc;
 use crate::services::mail::MailService;
+use tracing::info_span;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -62,5 +64,16 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
     Router::new()
         .nest("/api", api_routes)
         .fallback_service(ServeDir::new("dist").fallback(ServeFile::new("dist/index.html")))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &axum::http::Request<_>| {
+                    let path = request.uri().path();
+                    info_span!(
+                        "http_request",
+                        method = ?request.method(),
+                        path = %path,
+                    )
+                })
+        )
         .layer(CorsLayer::permissive())
 }
