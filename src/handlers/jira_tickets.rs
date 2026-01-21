@@ -12,6 +12,7 @@ use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use crate::AppState;
 use tracing::{error, info, debug, instrument};
+use validator::Validate;
 
 #[derive(Deserialize)]
 pub struct CreateTicketRequest {
@@ -136,9 +137,10 @@ pub async fn delete_ticket(
     Ok(StatusCode::NO_CONTENT)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct SubmitWorklogRequest {
     pub time_spent_formatted: String,
+    #[validate(length(min = 1, message = "Worklog description is required"))]
     pub description: String,
 }
 
@@ -149,6 +151,11 @@ pub async fn submit_worklog(
     Path(ticket_id): Path<Uuid>,
     Json(payload): Json<SubmitWorklogRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    if let Err(e) = payload.validate() {
+        debug!(error = ?e, "Worklog validation failed");
+        return Err((StatusCode::BAD_REQUEST, format!("Validation error: {}", e)));
+    }
+
     let ticket = ticket_repo::find_ticket_by_id_and_user(&state.pool, ticket_id, user_id)
         .await
         .map_err(|e| {

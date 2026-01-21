@@ -136,8 +136,10 @@
                     <p><span class="font-semibold text-gray-700 dark:text-gray-300">Time to log:</span> {{ formatTime(currentTicket.time_spent_seconds) }}</p>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Worklog Description</label>
-                    <textarea v-model="worklogDescription" class="input h-32" placeholder="Describe what you did..." title="Describe what you did"></textarea>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Worklog Description <span class="text-red-500">*</span>
+                    </label>
+                    <textarea v-model="worklogDescription" class="input h-32" placeholder="Describe what you did..." title="Describe what you did" required></textarea>
                   </div>
                 </div>
               </div>
@@ -354,6 +356,11 @@ const saveForLater = async () => {
 };
 
 const submitWorklog = async () => {
+  if (!worklogDescription.value.trim()) {
+    toast('Worklog description is required', 'warning');
+    return;
+  }
+  
   try {
     await fetchWithAuth(`/api/tickets/${currentTicket.value.id}/worklog`, {
       method: 'POST',

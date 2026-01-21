@@ -82,7 +82,7 @@ pub async fn submit_worklog(
         .post(&comment_url)
         .basic_auth(&server.username, Some(&password))
         .json(&serde_json::json!({
-            "body": format!("Time spent: {}\n\n{}", time_spent_formatted, description)
+            "body": description
         }))
         .send()
         .await;

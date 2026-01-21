@@ -243,3 +243,55 @@ async fn test_password_reset_flow() {
         .await
         .assert_status(axum::http::StatusCode::UNAUTHORIZED);
 }
+
+#[tokio::test]
+async fn test_worklog_validation() {
+    let server = setup_test_server().await;
+    let email = format!("worklog-{}@example.com", Uuid::new_v4());
+    let password = "password123";
+
+    // 1. Register and login
+    server.post("/api/auth/register")
+        .json(&json!({
+            "email": email,
+            "password": password,
+            "password_confirmation": password
+        }))
+        .await;
+    
+    let database_url = env::var("DATABASE_URL").unwrap();
+    let pool = MySqlPoolOptions::new().connect(&database_url).await.unwrap();
+    sqlx::query("UPDATE users SET is_confirmed = TRUE WHERE email = ?")
+        .bind(&email)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let response = server.post("/api/auth/login")
+        .json(&json!({
+            "email": email,
+            "password": password
+        }))
+        .await;
+    let token = response.json::<serde_json::Value>()["token"].as_str().unwrap().to_string();
+
+    // 2. Create a ticket
+    let response = server.post("/api/tickets")
+        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+        .json(&json!({ "ticket_number": "TEST-1" }))
+        .await;
+    let ticket_id = response.json::<serde_json::Value>()["id"].as_str().unwrap().to_string();
+
+    // 3. Attempt to submit worklog with EMPTY description
+    let response = server.post(&format!("/api/tickets/{}/worklog", ticket_id))
+        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+        .json(&json!({
+            "time_spent_formatted": "1h",
+            "description": ""
+        }))
+        .await;
+    
+    // Should fail with 400 Bad Request
+    response.assert_status(axum::http::StatusCode::BAD_REQUEST);
+    assert!(response.text().contains("Validation error"));
+}
