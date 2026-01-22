@@ -117,24 +117,24 @@ The frontend dev server will start (usually on `http://localhost:5173`) and prox
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MYSQL_ROOT_PASSWORD` | MySQL root password | `mysqlrootpass` |
-| `MYSQL_USER` | MySQL user | `mysqluser` |
-| `MYSQL_PASSWORD` | MySQL user password | `mysqlpassword` |
-| `MYSQL_HOST` | MySQL host | `localhost` |
-| `MYSQL_PORT` | MySQL port | `3306` |
-| `MYSQL_DBNAME` | MySQL database name | `jira_time_track` |
-| `DATABASE_URL` | SQLx database connection URL | `mysql://...` |
-| `JWT_SECRET` | Secret key for JWT signing | - |
-| `ENCRYPTION_KEY` | 64-character hex key for Jira credentials | - |
-| `APP_PORT` | Port for the Axum server | `3000` |
-| `APP_BASE_URL` | Base URL of the application | `http://localhost:3000` |
-| `SMTP_HOST` | SMTP server host | - |
-| `SMTP_PORT` | SMTP server port | `587` |
-| `SMTP_USER` | SMTP username | - |
-| `SMTP_PASS` | SMTP password | - |
-| `SMTP_FROM` | Email address to send from | - |
+| Variable              | Description                               | Default                 |
+|-----------------------|-------------------------------------------|-------------------------|
+| `MYSQL_ROOT_PASSWORD` | MySQL root password                       | `mysqlrootpass`         |
+| `MYSQL_USER`          | MySQL user                                | `mysqluser`             |
+| `MYSQL_PASSWORD`      | MySQL user password                       | `mysqlpassword`         |
+| `MYSQL_HOST`          | MySQL host                                | `localhost`             |
+| `MYSQL_PORT`          | MySQL port                                | `3306`                  |
+| `MYSQL_DBNAME`        | MySQL database name                       | `jira_time_track`       |
+| `DATABASE_URL`        | SQLx database connection URL              | `mysql://...`           |
+| `JWT_SECRET`          | Secret key for JWT signing                | -                       |
+| `ENCRYPTION_KEY`      | 64-character hex key for Jira credentials | -                       |
+| `APP_PORT`            | Port for the Axum server                  | `3000`                  |
+| `APP_BASE_URL`        | Base URL of the application               | `http://localhost:3000` |
+| `SMTP_HOST`           | SMTP server host                          | -                       |
+| `SMTP_PORT`           | SMTP server port                          | `587`                   |
+| `SMTP_USER`           | SMTP username                             | -                       |
+| `SMTP_PASS`           | SMTP password                             | -                       |
+| `SMTP_FROM`           | Email address to send from                | -                       |
 
 ## Testing
 
