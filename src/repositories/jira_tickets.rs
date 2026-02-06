@@ -20,12 +20,14 @@ pub async fn create_ticket(
     ticket_number: Option<&str>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "INSERT INTO jira_tickets (id, user_id, server_id, ticket_number) VALUES (?, ?, ?, ?)"
+        "INSERT INTO jira_tickets (id, user_id, server_id, ticket_number, sort_order) 
+         SELECT ?, ?, ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM jira_tickets WHERE user_id = ?"
     )
     .bind(id)
     .bind(user_id)
     .bind(server_id)
     .bind(ticket_number)
+    .bind(user_id)
     .execute(pool)
     .await?;
     Ok(())

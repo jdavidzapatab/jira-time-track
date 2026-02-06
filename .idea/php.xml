@@ -5,4 +5,9 @@
       <phpcs_by_interpreter asDefaultInterpreter="true" interpreter_id="1b0aa343-73a9-4730-bb66-ad298096e41b" timeout="30000" />
     </phpcs_settings>
   </component>
+  <component name="PhpStan">
+    <PhpStan_settings>
+      <phpstan_by_interpreter asDefaultInterpreter="true" interpreter_id="1b0aa343-73a9-4730-bb66-ad298096e41b" timeout="60000" />
+    </PhpStan_settings>
+  </component>
 </project>

@@ -58,14 +58,15 @@
             <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-gray-50 dark:border-gray-800 sm:border-t-0">
               <div class="flex flex-col items-center">
                 <div v-if="ticket.last_stopwatch_start" class="text-[10px] sm:text-xs font-mono text-green-600 dark:text-green-400 animate-pulse">
-                  {{ formatStopwatch(ticket.time_spent_seconds) }}
+                  {{ formatStopwatch(getLiveTotal(ticket)) }}
                 </div>
                 <div v-else class="text-[10px] sm:text-xs font-mono text-gray-400 dark:text-gray-500">
-                  00:00:00
+                  {{ formatStopwatch(ticket.time_spent_seconds) }}
                 </div>
                 <input 
-                  :value="formatTime(ticket.time_spent_seconds)" 
-                  @input="e => onTimeInput(ticket, e.target.value)" 
+                  v-model="ticket.inputTime" 
+                  @focus="onTimeFocus(ticket)"
+                  @blur="onTimeBlur(ticket)"
                   @keyup.enter="toggleStopwatch(ticket)"
                   class="input py-1 text-[10px] sm:text-sm text-center font-mono w-20 sm:w-28 mt-0.5" 
                   placeholder="0m" 
@@ -137,7 +138,7 @@
                 <div class="mt-4 space-y-3">
                   <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded text-sm space-y-1">
                     <p><span class="font-semibold text-gray-700 dark:text-gray-300">Ticket:</span> {{ currentTicket.ticket_number }} - {{ currentTicket.ticket_summary }}</p>
-                    <p><span class="font-semibold text-gray-700 dark:text-gray-300">Time to log:</span> {{ formatTime(currentTicket.time_spent_seconds) }}</p>
+                    <p><span class="font-semibold text-gray-700 dark:text-gray-300">Time to log:</span> {{ formatTime(getLiveTotal(currentTicket)) }}</p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -239,7 +240,8 @@ const fetchTickets = async () => {
     tickets.value = data.map(t => ({
       ...t,
       fetchError: null,
-      time_spent_seconds: t.time_spent_seconds + (t.last_stopwatch_start ? Math.floor((new Date() - new Date(t.last_stopwatch_start)) / 1000) : 0)
+      isEditing: false,
+      inputTime: formatTime(t.time_spent_seconds + (t.last_stopwatch_start ? Math.floor((new Date() - new Date(t.last_stopwatch_start)) / 1000) : 0))
     }));
   } catch (e) {
     toast(e.message, 'error');
@@ -261,7 +263,7 @@ const addTicket = async () => {
       body: JSON.stringify({ server_id }),
     });
     const newTicket = await response.json();
-    tickets.value.push({ ...newTicket, fetchError: null });
+    tickets.value.push({ ...newTicket, fetchError: null, isEditing: false, inputTime: '0m' });
 
     // Scroll to new item and focus input
     await nextTick();
@@ -324,13 +326,22 @@ const onTicketNumberBlur = async (ticket) => {
   }
 };
 
-const onTimeInput = (ticket, value) => {
-  const seconds = parseTime(value);
-  if (!isNaN(seconds)) {
-    ticket.time_spent_seconds = seconds;
-    ticket.last_stopwatch_start = null;
-    updateTicket(ticket);
+const onTimeFocus = (ticket) => {
+  ticket.isEditing = true;
+  ticket.originalInput = ticket.inputTime;
+};
+
+const onTimeBlur = (ticket) => {
+  ticket.isEditing = false;
+  if (ticket.inputTime !== ticket.originalInput) {
+    const seconds = parseTime(ticket.inputTime);
+    if (!isNaN(seconds)) {
+      ticket.time_spent_seconds = seconds;
+      ticket.last_stopwatch_start = null;
+      updateTicket(ticket);
+    }
   }
+  ticket.inputTime = formatTime(getLiveTotal(ticket));
 };
 
 const toggleStopwatch = (ticket) => {
@@ -339,8 +350,16 @@ const toggleStopwatch = (ticket) => {
     ticket.time_spent_seconds += elapsed;
     ticket.last_stopwatch_start = null;
   } else {
+    if (ticket.isEditing && ticket.inputTime !== ticket.originalInput) {
+      const seconds = parseTime(ticket.inputTime);
+      if (!isNaN(seconds)) {
+        ticket.time_spent_seconds = seconds;
+      }
+      ticket.isEditing = false;
+    }
     ticket.last_stopwatch_start = new Date().toISOString();
   }
+  ticket.inputTime = formatTime(getLiveTotal(ticket));
   updateTicket(ticket);
 };
 
@@ -380,7 +399,7 @@ const submitWorklog = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        time_spent_formatted: formatTime(currentTicket.value.time_spent_seconds),
+        time_spent_formatted: formatTime(getLiveTotal(currentTicket.value)),
         description: worklogDescription.value,
       }),
     });
@@ -467,6 +486,16 @@ const parseTime = (str) => {
   return d * 8 * 3600 + h * 3600 + m * 60;
 };
 
+const now = ref(new Date());
+
+const getLiveTotal = (ticket) => {
+  let total = ticket.time_spent_seconds;
+  if (ticket.last_stopwatch_start) {
+    total += Math.floor((now.value - new Date(ticket.last_stopwatch_start)) / 1000);
+  }
+  return total;
+};
+
 onMounted(async () => {
   await fetchServers();
   await fetchTickets();
@@ -480,9 +509,10 @@ onMounted(async () => {
   }
 
   timerInterval = setInterval(() => {
+    now.value = new Date();
     tickets.value.forEach(t => {
-      if (t.last_stopwatch_start) {
-        t.time_spent_seconds++;
+      if (t.last_stopwatch_start && !t.isEditing) {
+        t.inputTime = formatTime(getLiveTotal(t));
       }
     });
   }, 1000);
