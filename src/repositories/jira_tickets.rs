@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 
 pub async fn list_tickets_by_user(pool: &MySqlPool, user_id: Uuid) -> Result<Vec<JiraTicket>, sqlx::Error> {
     sqlx::query_as::<_, JiraTicket>(
-        "SELECT * FROM jira_tickets WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC"
+        "SELECT * FROM jira_tickets WHERE user_id = ? ORDER BY sort_order, created_at"
     )
     .bind(user_id)
     .fetch_all(pool)
