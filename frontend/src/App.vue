@@ -84,6 +84,11 @@
       <router-view></router-view>
     </main>
 
+    <footer class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center text-[10px] text-gray-400 dark:text-gray-500">
+      <div>&copy; 2026 JiraTrack</div>
+      <div v-if="versionInfo">v{{ versionInfo.version }} ({{ versionInfo.revision }})</div>
+    </footer>
+
     <!-- Global Toast Notifications -->
     <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
       <TransitionGroup name="toast">
@@ -121,6 +126,7 @@ const route = useRoute();
 const isLoggedIn = ref(!!localStorage.getItem('token'));
 const mobileMenuOpen = ref(false);
 const theme = ref(localStorage.getItem('theme') || 'system');
+const versionInfo = ref(null);
 
 const applyTheme = () => {
   const isDark = 
@@ -140,8 +146,20 @@ const updateTheme = (newTheme) => {
   applyTheme();
 };
 
+const fetchVersion = async () => {
+  try {
+    const response = await fetch('/api/version');
+    if (response.ok) {
+      versionInfo.value = await response.json();
+    }
+  } catch (e) {
+    console.error('Failed to fetch version', e);
+  }
+};
+
 onMounted(() => {
   applyTheme();
+  fetchVersion();
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (theme.value === 'system') applyTheme();
   });

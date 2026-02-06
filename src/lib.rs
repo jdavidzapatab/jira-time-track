@@ -31,6 +31,7 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
     };
 
     let api_routes = Router::new()
+        .route("/version", get(handlers::meta::get_version))
         .nest(
             "/auth",
             Router::new()

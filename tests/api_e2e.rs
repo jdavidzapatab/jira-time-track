@@ -295,3 +295,13 @@ async fn test_worklog_validation() {
     response.assert_status(axum::http::StatusCode::BAD_REQUEST);
     assert!(response.text().contains("Validation error"));
 }
+
+#[tokio::test]
+async fn test_version_endpoint() {
+    let server = setup_test_server().await;
+    let response = server.get("/api/version").await;
+    response.assert_status(axum::http::StatusCode::OK);
+    let json = response.json::<serde_json::Value>();
+    assert_eq!(json["version"], "1.0.0");
+    assert!(json["revision"].as_str().is_some());
+}
