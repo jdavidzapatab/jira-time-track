@@ -337,7 +337,9 @@ const onTimeBlur = (ticket) => {
     const seconds = parseTime(ticket.inputTime);
     if (!isNaN(seconds)) {
       ticket.time_spent_seconds = seconds;
-      ticket.last_stopwatch_start = null;
+      if (ticket.last_stopwatch_start) {
+        ticket.last_stopwatch_start = new Date().toISOString();
+      }
       updateTicket(ticket);
     }
   }
@@ -357,7 +359,9 @@ const toggleStopwatch = (ticket) => {
       }
       ticket.isEditing = false;
     }
-    ticket.last_stopwatch_start = new Date().toISOString();
+    const startTime = new Date();
+    ticket.last_stopwatch_start = startTime.toISOString();
+    now.value = startTime;
   }
   ticket.inputTime = formatTime(getLiveTotal(ticket));
   updateTicket(ticket);
@@ -491,7 +495,8 @@ const now = ref(new Date());
 const getLiveTotal = (ticket) => {
   let total = ticket.time_spent_seconds;
   if (ticket.last_stopwatch_start) {
-    total += Math.floor((now.value - new Date(ticket.last_stopwatch_start)) / 1000);
+    const elapsed = Math.floor((now.value - new Date(ticket.last_stopwatch_start)) / 1000);
+    total += Math.max(0, elapsed);
   }
   return total;
 };
