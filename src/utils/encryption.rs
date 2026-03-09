@@ -1,9 +1,9 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit},
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
-use rand::{rngs::OsRng, RngCore};
+use base64::{Engine, engine::general_purpose::STANDARD};
+use rand::{RngCore, rngs::OsRng};
 use std::env;
 
 pub fn encrypt(data: &str) -> String {
@@ -53,12 +53,14 @@ mod tests {
     fn test_encrypt_decrypt() {
         // Set a dummy key for testing
         let test_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-        unsafe { env::set_var("ENCRYPTION_KEY", test_key); }
+        unsafe {
+            env::set_var("ENCRYPTION_KEY", test_key);
+        }
 
         let original_text = "secret password 123";
         let encrypted = encrypt(original_text);
         assert_ne!(original_text, encrypted);
-        
+
         let decrypted = decrypt(&encrypted);
         assert_eq!(original_text, decrypted);
     }

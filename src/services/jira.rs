@@ -1,6 +1,6 @@
-use reqwest::Client;
-use crate::utils::encryption::decrypt;
 use crate::models::JiraServer;
+use crate::utils::encryption::decrypt;
+use reqwest::Client;
 use serde_json::Value;
 use tracing::instrument;
 
@@ -11,7 +11,11 @@ pub async fn test_connection(server: &JiraServer) -> Result<(), String> {
 }
 
 #[instrument(skip(password))]
-pub async fn test_connection_params(url: &str, username: &str, password: &str) -> Result<(), String> {
+pub async fn test_connection_params(
+    url: &str,
+    username: &str,
+    password: &str,
+) -> Result<(), String> {
     let client = Client::new();
     let resp = client
         .get(format!("{}/rest/api/2/myself", url))
@@ -28,7 +32,10 @@ pub async fn test_connection_params(url: &str, username: &str, password: &str) -
 }
 
 #[instrument(skip(server))]
-pub async fn get_ticket_summary(server: &JiraServer, ticket_number: &str) -> Result<String, String> {
+pub async fn get_ticket_summary(
+    server: &JiraServer,
+    ticket_number: &str,
+) -> Result<String, String> {
     let password = decrypt(&server.encrypted_password);
     let client = Client::new();
     let url = format!("{}/rest/api/2/issue/{}", server.url, ticket_number);
@@ -44,7 +51,9 @@ pub async fn get_ticket_summary(server: &JiraServer, ticket_number: &str) -> Res
     }
 
     let data: Value = resp.json().await.map_err(|e| e.to_string())?;
-    let summary = data["fields"]["summary"].as_str().unwrap_or("No summary found");
+    let summary = data["fields"]["summary"]
+        .as_str()
+        .unwrap_or("No summary found");
     Ok(summary.to_string())
 }
 

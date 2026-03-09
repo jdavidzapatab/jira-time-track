@@ -202,11 +202,26 @@ Uses Vitest and Vue Test Utils for component and logic testing.
 └── tests/                # Backend E2E tests
 ```
 
+## CI/CD
+
+The project uses GitHub Actions for Continuous Integration and Continuous Deployment. The workflow is defined in `.github/workflows/ci.yml` and performs the following on every push to the `main` branch:
+
+1.  **Backend Tests:** Runs `cargo fmt`, `cargo clippy`, and `cargo test`.
+2.  **Frontend Tests:** Runs `npm test` and `npm run build` for the Vue frontend.
+3.  **Docker Build & Push:** If tests pass, it builds the production Docker image and pushes it to Docker Hub.
+
+### Required GitHub Secrets
+
+To enable the Docker Hub push, you must configure the following secrets in your GitHub repository:
+
+- `DOCKERHUB_USERNAME`: Your Docker Hub username.
+- `DOCKERHUB_TOKEN`: A Docker Hub Access Token (PAT).
+
 ## TODO
 
 - [ ] Add a License file.
 - [ ] Implement more comprehensive E2E tests for the frontend.
-- [ ] CI/CD pipeline configuration.
+- [x] CI/CD pipeline configuration.
 
 ## License
 

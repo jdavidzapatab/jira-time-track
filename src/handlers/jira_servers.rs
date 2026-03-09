@@ -1,15 +1,15 @@
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    Extension, Json,
-};
+use crate::AppState;
 use crate::repositories::jira_servers as server_repo;
 use crate::services::jira as jira_service;
 use crate::utils::encryption::encrypt;
+use axum::{
+    Extension, Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, error, info, instrument};
 use uuid::Uuid;
-use crate::AppState;
-use tracing::{error, info, debug, instrument};
 
 #[derive(Deserialize)]
 pub struct CreateServerRequest {

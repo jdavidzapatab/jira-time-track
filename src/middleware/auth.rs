@@ -1,26 +1,33 @@
+use crate::AppState;
+use crate::utils::Claims;
 use axum::{
     extract::{Request, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     middleware::Next,
     response::Response,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{DecodingKey, Validation, decode};
 use std::env;
-use crate::utils::Claims;
-use crate::AppState;
 
 pub async fn auth(
     State(_state): State<AppState>,
     mut req: Request,
     next: Next,
 ) -> Result<Response, (StatusCode, String)> {
-    let auth_header = req.headers()
+    let auth_header = req
+        .headers()
         .get(header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok())
-        .ok_or((StatusCode::UNAUTHORIZED, "Missing authorization header".to_string()))?;
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "Missing authorization header".to_string(),
+        ))?;
 
     if !auth_header.starts_with("Bearer ") {
-        return Err((StatusCode::UNAUTHORIZED, "Invalid authorization header".to_string()));
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            "Invalid authorization header".to_string(),
+        ));
     }
 
     let token = &auth_header[7..];

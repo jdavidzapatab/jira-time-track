@@ -1,17 +1,17 @@
+use crate::AppState;
+use crate::models::JiraTicket;
+use crate::repositories::jira_servers as server_repo;
+use crate::repositories::jira_tickets as ticket_repo;
+use crate::services::jira as jira_service;
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
-    Extension, Json,
 };
-use crate::models::JiraTicket;
-use crate::repositories::jira_tickets as ticket_repo;
-use crate::repositories::jira_servers as server_repo;
-use crate::services::jira as jira_service;
-use serde::Deserialize;
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
-use crate::AppState;
-use tracing::{error, info, debug, instrument};
+use serde::Deserialize;
+use tracing::{debug, error, info, instrument};
+use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Deserialize)]
@@ -45,12 +45,19 @@ pub async fn create_ticket(
     let id = Uuid::new_v4();
     let at_top = payload.at_top.unwrap_or(false);
 
-    ticket_repo::create_ticket(&state.pool, id, user_id, payload.server_id, payload.ticket_number.as_deref(), at_top)
-        .await
-        .map_err(|e| {
-            error!(error = ?e, user_id = %user_id, "Failed to create ticket in database");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-        })?;
+    ticket_repo::create_ticket(
+        &state.pool,
+        id,
+        user_id,
+        payload.server_id,
+        payload.ticket_number.as_deref(),
+        at_top,
+    )
+    .await
+    .map_err(|e| {
+        error!(error = ?e, user_id = %user_id, "Failed to create ticket in database");
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
 
     let ticket = ticket_repo::find_ticket_by_id(&state.pool, id)
         .await
@@ -60,7 +67,10 @@ pub async fn create_ticket(
         })?
         .ok_or_else(|| {
             error!(ticket_id = %id, "Failed to fetch created ticket: not found");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch created ticket".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch created ticket".to_string(),
+            )
         })?;
 
     info!(user_id = %user_id, ticket_id = %id, "Jira ticket line created successfully");
@@ -171,11 +181,17 @@ pub async fn submit_worklog(
 
     let server_id = ticket.server_id.ok_or_else(|| {
         debug!(ticket_id = %ticket_id, "Worklog submission failed: no server selected");
-        (StatusCode::BAD_REQUEST, "No server selected for this ticket".to_string())
+        (
+            StatusCode::BAD_REQUEST,
+            "No server selected for this ticket".to_string(),
+        )
     })?;
     let ticket_number = ticket.ticket_number.as_ref().ok_or_else(|| {
         debug!(ticket_id = %ticket_id, "Worklog submission failed: no ticket number");
-        (StatusCode::BAD_REQUEST, "No ticket number for this ticket".to_string())
+        (
+            StatusCode::BAD_REQUEST,
+            "No ticket number for this ticket".to_string(),
+        )
     })?;
 
     let server = server_repo::find_server_by_id_only(&state.pool, server_id)
@@ -189,12 +205,17 @@ pub async fn submit_worklog(
             (StatusCode::INTERNAL_SERVER_ERROR, "Server not found".to_string())
         })?;
 
-    jira_service::submit_worklog(&server, ticket_number, &payload.time_spent_formatted, &payload.description)
-        .await
-        .map_err(|e| {
-            error!(error = %e, ticket_number = %ticket_number, "Failed to submit worklog to Jira");
-            (StatusCode::BAD_GATEWAY, e)
-        })?;
+    jira_service::submit_worklog(
+        &server,
+        ticket_number,
+        &payload.time_spent_formatted,
+        &payload.description,
+    )
+    .await
+    .map_err(|e| {
+        error!(error = %e, ticket_number = %ticket_number, "Failed to submit worklog to Jira");
+        (StatusCode::BAD_GATEWAY, e)
+    })?;
 
     info!(user_id = %user_id, ticket_number = %ticket_number, "Worklog submitted to Jira successfully");
     Ok(StatusCode::OK)
@@ -234,7 +255,10 @@ pub async fn get_ticket_summary(
         })?
         .ok_or_else(|| {
             error!(server_id = %server_id, "Server not found during summary update");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Server not found".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Server not found".to_string(),
+            )
         })?;
 
     let summary = jira_service::get_ticket_summary(&server, ticket_number)

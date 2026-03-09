@@ -1,6 +1,6 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2, PasswordVerifier, PasswordHash,
+    Argon2, PasswordHash, PasswordVerifier,
+    password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 
 pub fn hash_password(password: &str) -> Result<String, String> {
@@ -29,7 +29,7 @@ mod tests {
         let password = "secure_password";
         let hash = hash_password(password).unwrap();
         assert_ne!(password, hash);
-        
+
         assert!(verify_password(password, &hash).is_ok());
         assert!(verify_password("wrong_password", &hash).is_err());
     }

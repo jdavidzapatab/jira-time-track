@@ -1,8 +1,8 @@
 use axum_test::TestServer;
 use jira_time_track::app;
+use serde_json::json;
 use sqlx::mysql::MySqlPoolOptions;
 use std::env;
-use serde_json::json;
 use uuid::Uuid;
 
 async fn setup_test_server() -> TestServer {
@@ -42,7 +42,8 @@ async fn test_auth_flow() {
     let password = "password123";
 
     // 1. Register
-    let response = server.post("/api/auth/register")
+    let response = server
+        .post("/api/auth/register")
         .json(&json!({
             "email": email,
             "password": password,
@@ -53,7 +54,10 @@ async fn test_auth_flow() {
 
     // 2. Manually confirm the user in DB to allow login
     let database_url = env::var("DATABASE_URL").unwrap();
-    let pool = MySqlPoolOptions::new().connect(&database_url).await.unwrap();
+    let pool = MySqlPoolOptions::new()
+        .connect(&database_url)
+        .await
+        .unwrap();
     sqlx::query("UPDATE users SET is_confirmed = TRUE WHERE email = ?")
         .bind(&email)
         .execute(&pool)
@@ -61,18 +65,26 @@ async fn test_auth_flow() {
         .unwrap();
 
     // 3. Login
-    let response = server.post("/api/auth/login")
+    let response = server
+        .post("/api/auth/login")
         .json(&json!({
             "email": email,
             "password": password
         }))
         .await;
     response.assert_status(axum::http::StatusCode::OK);
-    let token = response.json::<serde_json::Value>()["token"].as_str().unwrap().to_string();
+    let token = response.json::<serde_json::Value>()["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // 4. Create a Jira Server
-    let response = server.post("/api/servers")
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .post("/api/servers")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .json(&json!({
             "name": "Test Server",
             "url": "https://test.atlassian.net",
@@ -81,29 +93,47 @@ async fn test_auth_flow() {
         }))
         .await;
     response.assert_status(axum::http::StatusCode::OK);
-    let server_id = response.json::<serde_json::Value>()["id"].as_str().unwrap().to_string();
+    let server_id = response.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // 5. List Servers
-    let response = server.get("/api/servers")
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .get("/api/servers")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .await;
     response.assert_status(axum::http::StatusCode::OK);
     assert!(response.json::<Vec<serde_json::Value>>().len() > 0);
 
     // 6. Create a Ticket
-    let response = server.post("/api/tickets")
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .post("/api/tickets")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .json(&json!({
             "server_id": server_id,
             "ticket_number": "PROJ-1"
         }))
         .await;
     response.assert_status(axum::http::StatusCode::OK);
-    let ticket_id = response.json::<serde_json::Value>()["id"].as_str().unwrap().to_string();
+    let ticket_id = response.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // 7. Update Ticket
-    let response = server.put(&format!("/api/tickets/{}", ticket_id))
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .put(&format!("/api/tickets/{}", ticket_id))
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .json(&json!({
             "server_id": server_id,
             "ticket_number": "PROJ-1",
@@ -114,8 +144,12 @@ async fn test_auth_flow() {
     response.assert_status(axum::http::StatusCode::OK);
 
     // 7.1 Reorder Tickets
-    let response = server.post("/api/tickets/reorder")
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .post("/api/tickets/reorder")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .json(&json!({
             "ticket_ids": [ticket_id]
         }))
@@ -123,14 +157,22 @@ async fn test_auth_flow() {
     response.assert_status(axum::http::StatusCode::OK);
 
     // 8. Delete Server (should CASCADE delete tickets)
-    let response = server.delete(&format!("/api/servers/{}", server_id))
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .delete(&format!("/api/servers/{}", server_id))
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .await;
     response.assert_status(axum::http::StatusCode::NO_CONTENT);
 
     // 9. Verify ticket is gone
-    let response = server.get("/api/tickets")
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .get("/api/tickets")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .await;
     assert_eq!(response.json::<Vec<serde_json::Value>>().len(), 0);
 }
@@ -138,14 +180,15 @@ async fn test_auth_flow() {
 #[tokio::test]
 async fn test_confirmation_endpoint_methods() {
     let server = setup_test_server().await;
-    
+
     // Test GET method (as clicked from email)
     let response = server.get("/api/auth/confirm?token=nonexistent").await;
     // Should be 400 Bad Request, NOT 405 Method Not Allowed
     assert_eq!(response.status_code(), axum::http::StatusCode::BAD_REQUEST);
 
     // Test POST method with JSON (as called from frontend)
-    let response = server.post("/api/auth/confirm")
+    let response = server
+        .post("/api/auth/confirm")
         .json(&json!({ "token": "nonexistent" }))
         .await;
     assert_eq!(response.status_code(), axum::http::StatusCode::BAD_REQUEST);
@@ -154,7 +197,7 @@ async fn test_confirmation_endpoint_methods() {
 #[tokio::test]
 async fn test_frontend_fallback() {
     let server = setup_test_server().await;
-    
+
     // Request a frontend route
     let response = server.get("/change-password").await;
     response.assert_status(axum::http::StatusCode::OK);
@@ -166,8 +209,9 @@ async fn test_frontend_fallback() {
 #[tokio::test]
 async fn test_invalid_registration() {
     let server = setup_test_server().await;
-    
-    let response = server.post("/api/auth/register")
+
+    let response = server
+        .post("/api/auth/register")
         .json(&json!({
             "email": "invalid-email",
             "password": "short",
@@ -185,16 +229,20 @@ async fn test_password_reset_flow() {
     let new_password = "newpassword123";
 
     // 1. Register and confirm
-    server.post("/api/auth/register")
+    server
+        .post("/api/auth/register")
         .json(&json!({
             "email": email,
             "password": password,
             "password_confirmation": password
         }))
         .await;
-    
+
     let database_url = env::var("DATABASE_URL").unwrap();
-    let pool = MySqlPoolOptions::new().connect(&database_url).await.unwrap();
+    let pool = MySqlPoolOptions::new()
+        .connect(&database_url)
+        .await
+        .unwrap();
     sqlx::query("UPDATE users SET is_confirmed = TRUE WHERE email = ?")
         .bind(&email)
         .execute(&pool)
@@ -202,21 +250,24 @@ async fn test_password_reset_flow() {
         .unwrap();
 
     // 2. Request password change
-    server.post("/api/auth/change-password-request")
+    server
+        .post("/api/auth/change-password-request")
         .json(&json!({ "email": email }))
         .await
         .assert_status(axum::http::StatusCode::OK);
 
     // 3. Get token from DB
-    let row: (Option<String>,) = sqlx::query_as("SELECT confirmation_token FROM users WHERE email = ?")
-        .bind(&email)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let row: (Option<String>,) =
+        sqlx::query_as("SELECT confirmation_token FROM users WHERE email = ?")
+            .bind(&email)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     let token = row.0.expect("Token should be present");
 
     // 4. Execute password change
-    server.post("/api/auth/change-password")
+    server
+        .post("/api/auth/change-password")
         .json(&json!({
             "token": token,
             "password": new_password,
@@ -226,7 +277,8 @@ async fn test_password_reset_flow() {
         .assert_status(axum::http::StatusCode::OK);
 
     // 5. Verify login with NEW password
-    server.post("/api/auth/login")
+    server
+        .post("/api/auth/login")
         .json(&json!({
             "email": email,
             "password": new_password
@@ -235,7 +287,8 @@ async fn test_password_reset_flow() {
         .assert_status(axum::http::StatusCode::OK);
 
     // 6. Verify login with OLD password fails
-    server.post("/api/auth/login")
+    server
+        .post("/api/auth/login")
         .json(&json!({
             "email": email,
             "password": password
@@ -251,46 +304,65 @@ async fn test_worklog_validation() {
     let password = "password123";
 
     // 1. Register and login
-    server.post("/api/auth/register")
+    server
+        .post("/api/auth/register")
         .json(&json!({
             "email": email,
             "password": password,
             "password_confirmation": password
         }))
         .await;
-    
+
     let database_url = env::var("DATABASE_URL").unwrap();
-    let pool = MySqlPoolOptions::new().connect(&database_url).await.unwrap();
+    let pool = MySqlPoolOptions::new()
+        .connect(&database_url)
+        .await
+        .unwrap();
     sqlx::query("UPDATE users SET is_confirmed = TRUE WHERE email = ?")
         .bind(&email)
         .execute(&pool)
         .await
         .unwrap();
 
-    let response = server.post("/api/auth/login")
+    let response = server
+        .post("/api/auth/login")
         .json(&json!({
             "email": email,
             "password": password
         }))
         .await;
-    let token = response.json::<serde_json::Value>()["token"].as_str().unwrap().to_string();
+    let token = response.json::<serde_json::Value>()["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // 2. Create a ticket
-    let response = server.post("/api/tickets")
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .post("/api/tickets")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .json(&json!({ "ticket_number": "TEST-1" }))
         .await;
-    let ticket_id = response.json::<serde_json::Value>()["id"].as_str().unwrap().to_string();
+    let ticket_id = response.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // 3. Attempt to submit worklog with EMPTY description
-    let response = server.post(&format!("/api/tickets/{}/worklog", ticket_id))
-        .add_header(axum::http::header::AUTHORIZATION, format!("Bearer {}", token))
+    let response = server
+        .post(&format!("/api/tickets/{}/worklog", ticket_id))
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
         .json(&json!({
             "time_spent_formatted": "1h",
             "description": ""
         }))
         .await;
-    
+
     // Should fail with 400 Bad Request
     response.assert_status(axum::http::StatusCode::BAD_REQUEST);
     assert!(response.text().contains("Validation error"));

@@ -1,10 +1,10 @@
 pub mod encryption;
 
-use jsonwebtoken::{encode, Header, EncodingKey};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use std::env;
 use axum::http::StatusCode;
+use jsonwebtoken::{EncodingKey, Header, encode};
+use serde::{Deserialize, Serialize};
+use std::env;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -24,6 +24,10 @@ pub fn generate_jwt(user_id: Uuid) -> Result<String, (StatusCode, String)> {
         exp: expiration,
     };
 
-    encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_ref()),
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }

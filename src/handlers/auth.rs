@@ -1,17 +1,17 @@
-use axum::{
-    extract::{State, Query},
-    http::StatusCode,
-    Json,
-};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use validator::Validate;
-use std::env;
+use crate::AppState;
 use crate::repositories::users as user_repo;
 use crate::services::auth as auth_service;
 use crate::utils::generate_jwt;
-use crate::AppState;
-use tracing::{error, info, debug, instrument};
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+};
+use serde::{Deserialize, Serialize};
+use std::env;
+use tracing::{debug, error, info, instrument};
+use uuid::Uuid;
+use validator::Validate;
 
 #[derive(Deserialize, Validate, Debug)]
 pub struct RegisterRequest {
@@ -34,37 +34,52 @@ pub async fn register(
 
     if payload.password != payload.password_confirmation {
         debug!("Passwords do not match during registration");
-        return Err((StatusCode::BAD_REQUEST, "Passwords do not match".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Passwords do not match".to_string(),
+        ));
     }
 
-    let password_hash = auth_service::hash_password(&payload.password)
-        .map_err(|e| {
-            error!(error = ?e, "Failed to hash password");
-            (StatusCode::INTERNAL_SERVER_ERROR, e)
-        })?;
+    let password_hash = auth_service::hash_password(&payload.password).map_err(|e| {
+        error!(error = ?e, "Failed to hash password");
+        (StatusCode::INTERNAL_SERVER_ERROR, e)
+    })?;
 
     let id = Uuid::new_v4();
     let confirmation_token = Uuid::new_v4().to_string();
 
-    user_repo::create_user(&state.pool, id, &payload.email, &password_hash, &confirmation_token)
-        .await
-        .map_err(|e| {
-            error!(error = ?e, email = %payload.email, "Failed to create user in database");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-        })?;
+    user_repo::create_user(
+        &state.pool,
+        id,
+        &payload.email,
+        &password_hash,
+        &confirmation_token,
+    )
+    .await
+    .map_err(|e| {
+        error!(error = ?e, email = %payload.email, "Failed to create user in database");
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
 
     let base_url = env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let confirmation_link = format!("{}/confirm?token={}", base_url, confirmation_token);
-    
+
     // Send email
-    state.mail_service.send_email(
-        &payload.email,
-        "Confirm your JiraTrack account",
-        format!("Please confirm your account by clicking this link: {}", confirmation_link)
-    ).await.map_err(|e| {
-        error!(error = ?e, email = %payload.email, "Failed to send confirmation email");
-        (StatusCode::INTERNAL_SERVER_ERROR, e)
-    })?;
+    state
+        .mail_service
+        .send_email(
+            &payload.email,
+            "Confirm your JiraTrack account",
+            format!(
+                "Please confirm your account by clicking this link: {}",
+                confirmation_link
+            ),
+        )
+        .await
+        .map_err(|e| {
+            error!(error = ?e, email = %payload.email, "Failed to send confirmation email");
+            (StatusCode::INTERNAL_SERVER_ERROR, e)
+        })?;
 
     info!(email = %payload.email, "User registered successfully");
     debug!(confirmation_link = %confirmation_link, "Confirmation link generated");
@@ -147,11 +162,10 @@ pub async fn login(
         return Err((StatusCode::FORBIDDEN, "Account not confirmed".to_string()));
     }
 
-    auth_service::verify_password(&payload.password, &user.password_hash)
-        .map_err(|e| {
-            debug!(email = %payload.email, "Invalid password for login");
-            (StatusCode::UNAUTHORIZED, e)
-        })?;
+    auth_service::verify_password(&payload.password, &user.password_hash).map_err(|e| {
+        debug!(email = %payload.email, "Invalid password for login");
+        (StatusCode::UNAUTHORIZED, e)
+    })?;
 
     let token = generate_jwt(user.id).map_err(|e| {
         error!(error = ?e, user_id = %user.id, "Failed to generate JWT");
@@ -173,7 +187,7 @@ pub async fn request_password_change(
     Json(payload): Json<PasswordChangeRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let token = Uuid::new_v4().to_string();
-    
+
     let rows_affected = user_repo::update_confirmation_token(&state.pool, &payload.email, &token)
         .await
         .map_err(|e| {
@@ -182,9 +196,10 @@ pub async fn request_password_change(
         })?;
 
     if rows_affected > 0 {
-        let base_url = env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        let base_url =
+            env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
         let change_link = format!("{}/change-password?token={}", base_url, token);
-        
+
         // Send email
         state.mail_service.send_email(
             &payload.email,
@@ -224,14 +239,16 @@ pub async fn change_password(
 
     if payload.password != payload.password_confirmation {
         debug!("Passwords do not match during password change");
-        return Err((StatusCode::BAD_REQUEST, "Passwords do not match".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Passwords do not match".to_string(),
+        ));
     }
 
-    let password_hash = auth_service::hash_password(&payload.password)
-        .map_err(|e| {
-            error!(error = ?e, "Failed to hash new password");
-            (StatusCode::INTERNAL_SERVER_ERROR, e)
-        })?;
+    let password_hash = auth_service::hash_password(&payload.password).map_err(|e| {
+        error!(error = ?e, "Failed to hash new password");
+        (StatusCode::INTERNAL_SERVER_ERROR, e)
+    })?;
 
     let rows_affected = user_repo::update_password(&state.pool, &payload.token, &password_hash)
         .await
@@ -242,7 +259,10 @@ pub async fn change_password(
 
     if rows_affected == 0 {
         debug!("Invalid or expired token for password change");
-        return Err((StatusCode::BAD_REQUEST, "Invalid or expired token".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid or expired token".to_string(),
+        ));
     }
 
     info!("Password updated successfully");

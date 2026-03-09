@@ -1,5 +1,5 @@
-use jira_time_track::app;
 use dotenvy::dotenv;
+use jira_time_track::app;
 use sqlx::mysql::MySqlPoolOptions;
 use std::env;
 use std::net::SocketAddr;
@@ -14,7 +14,11 @@ async fn main() {
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "jira_time_track=debug,tower_http=debug".into()),
         )
-        .with(tracing_subscriber::fmt::layer().json().with_current_span(true))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .json()
+                .with_current_span(true),
+        )
         .init();
 
     tracing::info!("Starting Jira Time Track server...");
@@ -37,7 +41,7 @@ async fn main() {
 
     let port = env::var("APP_PORT").unwrap_or_else(|_| "3000".to_string());
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
-    
+
     tracing::info!("listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
