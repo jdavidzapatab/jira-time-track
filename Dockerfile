@@ -30,6 +30,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y libssl3 libmariadb3 ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=backend-builder /app/target/release/jira-time-track ./
+RUN chmod +x ./jira-time-track
 COPY --from=frontend-builder /app/dist ./dist
 COPY migrations ./migrations
 

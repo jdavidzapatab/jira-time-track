@@ -53,7 +53,7 @@ impl MailService {
 
     pub async fn send_email(&self, to: &str, subject: &str, body: String) -> Result<(), String> {
         if self.stub {
-            println!("STUB EMAIL to: {}, subject: {}, body: {}", to, subject, body);
+            tracing::info!(to = %to, subject = %subject, body = %body, "STUB EMAIL sent");
             return Ok(());
         }
 

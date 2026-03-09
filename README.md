@@ -204,7 +204,7 @@ Uses Vitest and Vue Test Utils for component and logic testing.
 
 ## TODO
 
-- [ ] Add License file.
+- [ ] Add a License file.
 - [ ] Implement more comprehensive E2E tests for the frontend.
 - [ ] CI/CD pipeline configuration.
 

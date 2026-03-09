@@ -10,11 +10,14 @@ async fn main() {
     dotenv().ok();
 
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            env::var("RUST_LOG").unwrap_or_else(|_| "jira_time_track=debug,tower_http=debug".into()),
-        ))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "jira_time_track=debug,tower_http=debug".into()),
+        )
         .with(tracing_subscriber::fmt::layer().json().with_current_span(true))
         .init();
+
+    tracing::info!("Starting Jira Time Track server...");
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = MySqlPoolOptions::new()
@@ -28,13 +31,14 @@ async fn main() {
         .run(&pool)
         .await
         .expect("Failed to run migrations");
+    tracing::info!("Database migrations run successfully");
 
     let app = app(pool).await;
 
     let port = env::var("APP_PORT").unwrap_or_else(|_| "3000".to_string());
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
     
-    tracing::debug!("listening on {}", addr);
+    tracing::info!("listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

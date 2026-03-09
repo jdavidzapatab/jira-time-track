@@ -10,12 +10,12 @@ use axum::{
     routing::{get, post, put, delete},
     Router,
 };
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{TraceLayer, DefaultOnRequest, DefaultOnResponse, DefaultOnFailure};
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 use std::sync::Arc;
 use crate::services::mail::MailService;
-use tracing::info_span;
+use tracing::{info_span, Level};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -75,6 +75,9 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
                         path = %path,
                     )
                 })
+                .on_request(DefaultOnRequest::new().level(Level::INFO))
+                .on_response(DefaultOnResponse::new().level(Level::INFO))
+                .on_failure(DefaultOnFailure::new().level(Level::ERROR))
         )
         .layer(CorsLayer::permissive())
 }
