@@ -374,6 +374,6 @@ async fn test_version_endpoint() {
     let response = server.get("/api/version").await;
     response.assert_status(axum::http::StatusCode::OK);
     let json = response.json::<serde_json::Value>();
-    assert_eq!(json["version"], "1.0.3");
+    assert_eq!(json["version"], env!("CARGO_PKG_VERSION"));
     assert!(json["revision"].as_str().is_some());
 }
