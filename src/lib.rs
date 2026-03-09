@@ -8,7 +8,7 @@ mod utils;
 use crate::services::mail::MailService;
 use axum::{
     Router,
-    middleware::from_fn_with_state,
+    middleware::from_fn,
     routing::{delete, get, post, put},
 };
 use std::sync::Arc;
@@ -35,7 +35,7 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
                 .route("/register", post(handlers::auth::register))
                 .route(
                     "/confirm",
-                    get(handlers::auth::confirm).post(handlers::auth::confirm),
+                    get(handlers::auth::confirm_get).post(handlers::auth::confirm_post),
                 )
                 .route("/login", post(handlers::auth::login))
                 .route(
@@ -46,7 +46,7 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
         )
         .nest(
             "/servers",
-            Router::new()
+            Router::<AppState>::new()
                 .route(
                     "/",
                     get(handlers::jira_servers::list_servers)
@@ -56,13 +56,13 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
                     "/test-new",
                     post(handlers::jira_servers::test_new_server_credentials),
                 )
-                .route("/:id", delete(handlers::jira_servers::delete_server))
-                .route("/:id/test", post(handlers::jira_servers::test_credentials))
-                .layer(from_fn_with_state(state.clone(), middleware::auth::auth)),
+                .route("/{id}", delete(handlers::jira_servers::delete_server))
+                .route("/{id}/test", post(handlers::jira_servers::test_credentials))
+                .layer(from_fn(middleware::auth::auth)),
         )
         .nest(
             "/tickets",
-            Router::new()
+            Router::<AppState>::new()
                 .route(
                     "/",
                     get(handlers::jira_tickets::list_tickets)
@@ -70,16 +70,16 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
                 )
                 .route("/reorder", post(handlers::jira_tickets::reorder_tickets))
                 .route(
-                    "/:id",
+                    "/{id}",
                     put(handlers::jira_tickets::update_ticket)
                         .delete(handlers::jira_tickets::delete_ticket),
                 )
                 .route(
-                    "/:id/summary",
+                    "/{id}/summary",
                     get(handlers::jira_tickets::get_ticket_summary),
                 )
-                .route("/:id/worklog", post(handlers::jira_tickets::submit_worklog))
-                .layer(from_fn_with_state(state.clone(), middleware::auth::auth)),
+                .route("/{id}/worklog", post(handlers::jira_tickets::submit_worklog))
+                .layer(from_fn(middleware::auth::auth)),
         )
         .with_state(state);
 

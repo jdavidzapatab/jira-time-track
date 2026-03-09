@@ -1,7 +1,6 @@
-use crate::AppState;
 use crate::utils::Claims;
 use axum::{
-    extract::{Request, State},
+    extract::Request,
     http::{StatusCode, header},
     middleware::Next,
     response::Response,
@@ -10,7 +9,6 @@ use jsonwebtoken::{DecodingKey, Validation, decode};
 use std::env;
 
 pub async fn auth(
-    State(_state): State<AppState>,
     mut req: Request,
     next: Next,
 ) -> Result<Response, (StatusCode, String)> {

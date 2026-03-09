@@ -3,7 +3,6 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use rand::{RngCore, rngs::OsRng};
 use std::env;
 
 pub fn encrypt(data: &str) -> String {
@@ -12,7 +11,7 @@ pub fn encrypt(data: &str) -> String {
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).expect("Invalid key length");
 
     let mut nonce_bytes = [0u8; 12];
-    OsRng.fill_bytes(&mut nonce_bytes);
+    rand::fill(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher

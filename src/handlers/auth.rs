@@ -92,27 +92,26 @@ pub struct ConfirmRequest {
     pub token: String,
 }
 
-#[instrument(skip(state, query, payload))]
-pub async fn confirm(
+#[instrument(skip(state, query))]
+pub async fn confirm_get(
     State(state): State<AppState>,
-    query: Option<Query<ConfirmRequest>>,
-    payload: Option<Json<ConfirmRequest>>,
+    Query(query): Query<ConfirmRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let token = if let Some(Query(q)) = query {
-        if !q.token.is_empty() {
-            q.token
-        } else if let Some(Json(p)) = payload {
-            p.token
-        } else {
-            debug!("Missing token in confirm request");
-            return Err((StatusCode::BAD_REQUEST, "Missing token".to_string()));
-        }
-    } else if let Some(Json(p)) = payload {
-        p.token
-    } else {
-        debug!("Missing token in confirm request");
-        return Err((StatusCode::BAD_REQUEST, "Missing token".to_string()));
-    };
+    confirm_token(state, query.token).await
+}
+
+#[instrument(skip(state, payload))]
+pub async fn confirm_post(
+    State(state): State<AppState>,
+    Json(payload): Json<ConfirmRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    confirm_token(state, payload.token).await
+}
+
+async fn confirm_token(state: AppState, token: String) -> Result<StatusCode, (StatusCode, String)> {
+    if token.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Token is required".to_string()));
+    }
 
     let rows_affected = user_repo::confirm_user(&state.pool, &token)
         .await

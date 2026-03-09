@@ -32,7 +32,7 @@ async fn setup_test_server() -> TestServer {
         .expect("Failed to run migrations");
 
     let app = app(pool).await;
-    TestServer::new(app).unwrap()
+    TestServer::new(app)
 }
 
 #[tokio::test]
