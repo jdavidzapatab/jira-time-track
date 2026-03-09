@@ -8,10 +8,7 @@ use axum::{
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use std::env;
 
-pub async fn auth(
-    mut req: Request,
-    next: Next,
-) -> Result<Response, (StatusCode, String)> {
+pub async fn auth(mut req: Request, next: Next) -> Result<Response, (StatusCode, String)> {
     let auth_header = req
         .headers()
         .get(header::AUTHORIZATION)

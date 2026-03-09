@@ -78,7 +78,10 @@ pub async fn app(pool: sqlx::MySqlPool) -> Router {
                     "/{id}/summary",
                     get(handlers::jira_tickets::get_ticket_summary),
                 )
-                .route("/{id}/worklog", post(handlers::jira_tickets::submit_worklog))
+                .route(
+                    "/{id}/worklog",
+                    post(handlers::jira_tickets::submit_worklog),
+                )
                 .layer(from_fn(middleware::auth::auth)),
         )
         .with_state(state);
