@@ -27,15 +27,15 @@ impl MailService {
             .parse::<u16>()
             .expect("SMTP_PORT must be a number");
         let smtp_user = env::var("SMTP_USER").ok();
-        let smtp_pass = env::var("SMTP_PASS").ok();
+        let smtp_password = env::var("SMTP_PASSWORD").ok();
 
         let mut mailer_builder = if smtp_port == 465 {
-            AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_host).expect("Failed to create SMTP relay")
+          AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_host).expect("Failed to create SMTP relay")
         } else {
-            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp_host).expect("Failed to create SMTP relay")
+          AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp_host).expect("Failed to create SMTP relay")
         };
 
-        let credentials = smtp_user.zip(smtp_pass).filter(|(u, _)| !u.is_empty());
+        let credentials = smtp_user.zip(smtp_password).filter(|(u, _)| !u.is_empty());
         if let Some((user, pass)) = credentials {
             mailer_builder = mailer_builder.credentials(Credentials::new(user, pass));
         }

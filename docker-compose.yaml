@@ -1,4 +1,26 @@
 services:
+  app:
+    build: .
+    container_name: jira-time-track-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/jira_time_track
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - APP_BASE_URL=${APP_BASE_URL}
+      - APP_PORT=3000
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_STUB=${SMTP_STUB}
+      - RUST_LOG=jira_time_track=info,tower_http=info
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
   mysql:
     image: mysql:9.5.0
     container_name: jira-time-track-mysql

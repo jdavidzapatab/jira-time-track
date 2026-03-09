@@ -13,7 +13,7 @@ async fn main() {
         .with(tracing_subscriber::EnvFilter::new(
             env::var("RUST_LOG").unwrap_or_else(|_| "jira_time_track=debug,tower_http=debug".into()),
         ))
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().json().with_current_span(true))
         .init();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");

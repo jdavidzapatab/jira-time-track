@@ -133,7 +133,7 @@ The frontend dev server will start (usually on `http://localhost:5173`) and prox
 | `SMTP_HOST`           | SMTP server host                          | -                       |
 | `SMTP_PORT`           | SMTP server port                          | `587`                   |
 | `SMTP_USER`           | SMTP username                             | -                       |
-| `SMTP_PASS`           | SMTP password                             | -                       |
+| `SMTP_PASSWORD`       | SMTP password                             | -                       |
 | `SMTP_FROM`           | Email address to send from                | -                       |
 
 ## Testing

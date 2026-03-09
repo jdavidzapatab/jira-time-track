@@ -18,6 +18,7 @@ use validator::Validate;
 pub struct CreateTicketRequest {
     pub server_id: Option<Uuid>,
     pub ticket_number: Option<String>,
+    pub at_top: Option<bool>,
 }
 
 #[instrument(skip(state))]
@@ -42,8 +43,9 @@ pub async fn create_ticket(
     Json(payload): Json<CreateTicketRequest>,
 ) -> Result<Json<JiraTicket>, (StatusCode, String)> {
     let id = Uuid::new_v4();
+    let at_top = payload.at_top.unwrap_or(false);
 
-    ticket_repo::create_ticket(&state.pool, id, user_id, payload.server_id, payload.ticket_number.as_deref())
+    ticket_repo::create_ticket(&state.pool, id, user_id, payload.server_id, payload.ticket_number.as_deref(), at_top)
         .await
         .map_err(|e| {
             error!(error = ?e, user_id = %user_id, "Failed to create ticket in database");

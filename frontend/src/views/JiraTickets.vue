@@ -2,21 +2,35 @@
   <div class="space-y-6 pb-20 sm:pb-6">
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Jira Tickets</h1>
-      <button ref="topAddButton" @click="addTicket" class="hidden sm:flex btn btn-primary" title="Add a new ticket line item">
-        <Plus :size="20" />
-        Add Ticket
-      </button>
+      <div class="hidden sm:flex gap-2">
+        <button @click="addTicket(true)" class="btn btn-secondary flex items-center gap-1" title="Add a new ticket at the TOP of the list">
+          <Plus :size="18" />
+          <span>Add at Top</span>
+        </button>
+        <button ref="topAddButton" @click="addTicket(false)" class="btn btn-primary flex items-center gap-1" title="Add a new ticket at the BOTTOM of the list">
+          <Plus :size="18" />
+          <span>Add at Bottom</span>
+        </button>
+      </div>
     </div>
 
     <!-- Floating Add Button (shows when top button is not visible) -->
-    <button 
-      v-if="!isTopButtonVisible"
-      @click="addTicket" 
-      class="fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95 flex items-center justify-center" 
-      title="Add a new ticket line item"
-    >
-      <Plus :size="24" />
-    </button>
+    <div v-if="!isTopButtonVisible" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+      <button 
+        @click="addTicket(true)" 
+        class="p-3 bg-gray-600 text-white rounded-full shadow-lg hover:bg-gray-700 transition-transform active:scale-95 flex items-center justify-center" 
+        title="Add a new ticket at the TOP of the list"
+      >
+        <Plus :size="20" />
+      </button>
+      <button 
+        @click="addTicket(false)" 
+        class="p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform active:scale-95 flex items-center justify-center" 
+        title="Add a new ticket at the BOTTOM of the list"
+      >
+        <Plus :size="24" />
+      </button>
+    </div>
 
     <draggable 
       v-model="tickets" 
@@ -123,7 +137,7 @@
     <!-- Save Dialog Modal -->
     <div v-if="showSaveDialog" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
       <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showSaveDialog = false"></div>
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-75 backdrop-blur-sm transition-opacity" aria-hidden="true" @click="showSaveDialog = false"></div>
 
         <!-- This element is to trick the browser into centering the modal contents. -->
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
@@ -248,10 +262,10 @@ const fetchTickets = async () => {
   }
 };
 
-const addTicket = async () => {
+const addTicket = async (atTop = false) => {
   let server_id = null;
   if (tickets.value.length > 0) {
-    server_id = tickets.value[tickets.value.length - 1].server_id;
+    server_id = atTop ? tickets.value[0].server_id : tickets.value[tickets.value.length - 1].server_id;
   } else if (servers.value.length === 1) {
     server_id = servers.value[0].id;
   }
@@ -260,18 +274,22 @@ const addTicket = async () => {
     const response = await fetchWithAuth('/api/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ server_id }),
+      body: JSON.stringify({ server_id, at_top: atTop }),
     });
     const newTicket = await response.json();
-    tickets.value.push({ ...newTicket, fetchError: null, isEditing: false, inputTime: '0m' });
+    if (atTop) {
+      tickets.value.unshift({ ...newTicket, fetchError: null, isEditing: false, inputTime: '0m' });
+    } else {
+      tickets.value.push({ ...newTicket, fetchError: null, isEditing: false, inputTime: '0m' });
+    }
 
     // Scroll to new item and focus input
     await nextTick();
     const ticketElements = document.querySelectorAll('.card');
-    const lastTicket = ticketElements[ticketElements.length - 1];
-    if (lastTicket) {
-      lastTicket.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const input = lastTicket.querySelector('input[placeholder="Ticket #"]');
+    const targetTicket = atTop ? ticketElements[0] : ticketElements[ticketElements.length - 1];
+    if (targetTicket) {
+      targetTicket.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = targetTicket.querySelector('input[placeholder="Ticket #"]');
       if (input) input.focus();
     }
   } catch (e) {
@@ -421,7 +439,7 @@ const submitWorklog = async () => {
 
 const confirmClear = (ticket) => {
   confirmModal.title = 'Clear Ticket Data';
-  confirmModal.message = 'Are you sure you want to clear this ticket line data? This will reset the timer and description.';
+  confirmModal.message = `Are you sure you want to clear the data for ticket ${ticket.ticket_number || '(No Number)'} - ${ticket.ticket_summary || '(No Summary)'}? This will reset the timer and description.`;
   confirmModal.confirmLabel = 'Clear';
   confirmModal.type = 'danger';
   confirmModal.action = async () => {
@@ -440,7 +458,7 @@ const confirmClear = (ticket) => {
 
 const confirmDelete = (ticket) => {
   confirmModal.title = 'Delete Ticket';
-  confirmModal.message = 'Are you sure you want to delete this ticket line?';
+  confirmModal.message = `Are you sure you want to delete ticket ${ticket.ticket_number || '(No Number)'} - ${ticket.ticket_summary || '(No Summary)'}?`;
   confirmModal.confirmLabel = 'Delete';
   confirmModal.type = 'danger';
   confirmModal.action = async () => {
