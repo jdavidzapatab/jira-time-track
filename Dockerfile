@@ -21,8 +21,6 @@ RUN rm -rf src/
 COPY src/ ./src/
 COPY build.rs ./
 COPY migrations/ ./migrations/
-# Ensure the dist folder exists (will be overwritten by frontend build)
-RUN mkdir -p dist
 # Capture git info if available, otherwise build.rs handles it
 COPY .git ./.git
 RUN cargo build --release
@@ -32,7 +30,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y libssl3 libmariadb3 ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=backend-builder /app/target/release/jira-time-track ./
-COPY --from=frontend-builder /app/frontend/dist ./dist
+COPY --from=frontend-builder /app/dist ./dist
 COPY migrations ./migrations
 
 EXPOSE 3000

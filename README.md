@@ -32,7 +32,7 @@ A web application to track time spent on Jira tickets easily. It features a Rust
 
 - **Rust:** 1.75 or newer (Edition 2024 requires a recent version).
 - **Node.js & npm:** For frontend development and building.
-- **Docker:** To run the MySQL database.
+- **Docker:** To run the application and the MySQL database.
 - **SQLx CLI** (Optional): For managing migrations manually.
 
 ## Setup
@@ -50,11 +50,12 @@ A web application to track time spent on Jira tickets easily. It features a Rust
    ```
    *Note: Ensure `ENCRYPTION_KEY` is a 64-character hex string.*
 
-3. **Start the Database:**
-   Use Docker Compose to start the MySQL service:
+3. **Start the Application and Database:**
+   Use Docker Compose to start both the app and the MySQL service:
    ```bash
-   docker-compose up -d
+   docker-compose up -d --build
    ```
+   *Note: Ensure all environment variables in `.env` are set correctly before starting.*
 
 4. **Backend Setup:**
    The backend will automatically run migrations on startup.
@@ -100,6 +101,33 @@ The frontend dev server will start (usually on `http://localhost:5173`) and prox
    ./target/release/jira-time-track
    ```
    The backend will serve the frontend files from the `dist/` directory.
+
+## Docker
+
+### Running with Docker Compose
+The easiest way to run the entire stack (App + MySQL) is using Docker Compose:
+
+1. Create a `.env` file based on `.env.example`.
+2. Start the services:
+   ```bash
+   docker-compose up -d --build
+   ```
+3. The application will be accessible at `http://localhost:3000`.
+
+### Building the Image Manually
+If you want to build the Docker image standalone:
+
+```bash
+docker build -t jira-time-track:latest .
+```
+
+### Running the Image Standalone
+When running the image standalone, you must provide the necessary environment variables:
+
+```bash
+docker run -p 3000:3000 --env-file .env jira-time-track:latest
+```
+Note: Ensure the `DATABASE_URL` in your `.env` points to an accessible MySQL instance.
 
 ## Scripts
 
